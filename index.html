@@ -1,0 +1,5108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <title>Samurai vs Zombies: Sacred Chronicles</title>
+  <style>
+    :root {
+      --gold: #f5c542;
+      --gold-dark: #b8860b;
+      --red: #e63946;
+      --crimson: #8b0000;
+      --teal: #2ec4b6;
+      --cyan: #4cc9f0;
+      --purple: #7209b7;
+      --violet: #b5179e;
+      --green: #38b000;
+      --dark: #0f0c15;
+      --dark-card: #181422;
+      --parchment: #f4ecd8;
+      --parchment-dark: #d8c29d;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #07050a;
+      color: #fff;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 1400px;
+      max-height: 750px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      box-shadow: 0 10px 45px rgba(0, 0, 0, 0.95), 0 0 25px rgba(184, 134, 11, 0.25);
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    canvas#gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: auto;
+    }
+
+    /* Views & Overlays */
+    .view-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      z-index: 30;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .view-screen.active {
+      display: flex;
+    }
+
+    /* Start Screen */
+    #start-screen {
+      background: radial-gradient(circle at center, #261226 0%, #0d0612 85%, #050208 100%);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 30px;
+    }
+
+    .title-crest {
+      font-size: 58px;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 0 20px rgba(245, 197, 66, 0.6));
+      animation: pulseGlow 2.5s infinite alternate;
+    }
+
+    .game-main-title {
+      font-size: 44px;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      text-shadow: 0 4px 15px rgba(245, 197, 66, 0.6), 0 0 30px rgba(230, 57, 70, 0.6);
+      margin-bottom: 4px;
+    }
+
+    .game-subtitle {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ff9999;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .start-btn-group {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .styled-btn {
+      background: linear-gradient(180deg, #e63946 0%, #8b0000 100%);
+      border: 2px solid var(--gold);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      padding: 12px 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 6px 20px rgba(230, 57, 70, 0.5);
+      transition: all 0.15s ease;
+    }
+
+    .styled-btn:hover {
+      transform: scale(1.05);
+      border-color: #fff;
+      box-shadow: 0 8px 25px rgba(245, 197, 66, 0.7);
+    }
+
+    .styled-btn.gold-btn {
+      background: linear-gradient(180deg, #d4af37 0%, #997818 100%);
+      border-color: #ffd700;
+      color: #1a1202;
+    }
+
+    .start-features-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      max-width: 980px;
+      text-align: left;
+      font-size: 12px;
+      color: #cdba96;
+    }
+
+    .feature-card {
+      background: rgba(24, 18, 30, 0.85);
+      border: 1.5px solid #5a4628;
+      border-radius: 8px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    }
+
+    .feature-card h4 {
+      color: var(--gold);
+      font-size: 13px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Campaign Overworld Map View */
+    #campaign-screen {
+      background: #110d18;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #campaign-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(180deg, rgba(14, 10, 20, 0.95) 0%, rgba(14, 10, 20, 0) 100%);
+      z-index: 35;
+      pointer-events: none;
+    }
+
+    .campaign-title-box { pointer-events: auto; }
+    .campaign-title { font-size: 20px; font-weight: 900; color: var(--gold); letter-spacing: 1.5px; text-transform: uppercase; }
+    .campaign-desc { font-size: 12px; color: #baa482; }
+
+    .campaign-nav-btns {
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    #campaignMapCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+
+    /* Modals & Dialogs */
+    #node-details-modal, #blessing-modal, #merchant-modal, #end-game-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(6, 4, 10, 0.88);
+      backdrop-filter: blur(6px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .scroll-frame {
+      width: 90%;
+      max-width: 580px;
+      background: linear-gradient(180deg, #1f1828 0%, #110c17 100%);
+      border: 3px solid var(--gold);
+      border-radius: 12px;
+      box-shadow: 0 0 35px rgba(245, 197, 66, 0.4), 0 20px 40px rgba(0,0,0,0.9);
+      padding: 24px 28px;
+      position: relative;
+      text-align: center;
+    }
+
+    .scroll-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .scroll-chapter {
+      font-size: 12px;
+      color: #ff9999;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .scroll-desc {
+      font-size: 13px;
+      color: #d1c0a5;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    /* 3-Star Rating Styles */
+    .stars-rating-banner {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      font-size: 32px;
+      margin: 8px 0 14px 0;
+    }
+
+    .star-icon {
+      filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.7));
+      transition: transform 0.2s;
+    }
+    .star-icon.empty {
+      filter: grayscale(1) opacity(0.35);
+    }
+
+    .star-criteria-box {
+      background: rgba(14, 10, 20, 0.75);
+      border: 1.5px solid #4a3820;
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 18px;
+      font-size: 11px;
+      text-align: left;
+      line-height: 1.6;
+    }
+
+    .star-criterion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .star-criterion.earned { color: var(--gold); font-weight: bold; }
+    .star-criterion.unearned { color: #887d95; }
+
+    .node-rewards-box {
+      background: rgba(14, 10, 20, 0.7);
+      border: 1px solid #4a3820;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+
+    .reward-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .scroll-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .cancel-btn {
+      background: #2b2333;
+      border: 1.5px solid #5a4b66;
+      color: #c5b8d4;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .cancel-btn:hover { background: #3c3247; color: #fff; }
+
+    /* Blessings selection cards */
+    .blessings-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .blessing-card {
+      background: rgba(30, 24, 38, 0.85);
+      border: 2px solid #5a4628;
+      border-radius: 8px;
+      padding: 14px 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .blessing-card:hover {
+      border-color: var(--gold);
+      transform: translateY(-3px);
+      box-shadow: 0 4px 15px rgba(245, 197, 66, 0.3);
+    }
+    .blessing-icon { font-size: 32px; margin-bottom: 6px; }
+    .blessing-name { font-size: 13px; font-weight: 800; color: var(--gold); margin-bottom: 4px; }
+    .blessing-effect { font-size: 11px; color: #cdba96; line-height: 1.3; }
+
+    /* Combat HUD */
+    #battle-hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+
+    .hud-top-left {
+      position: absolute;
+      top: 10px;
+      left: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .hero-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(18, 14, 24, 0.88);
+      border: 2px solid #5a4628;
+      border-radius: 8px;
+      padding: 6px 14px 6px 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.8);
+      backdrop-filter: blur(4px);
+    }
+
+    .hero-portrait {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      background: radial-gradient(circle, #8b0000 0%, #200 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 26px;
+      box-shadow: 0 0 10px rgba(245, 197, 66, 0.4);
+    }
+
+    .hero-bars { display: flex; flex-direction: column; gap: 4px; }
+    .hero-title-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 800; color: var(--gold); }
+
+    .bar-container {
+      width: 175px;
+      height: 14px;
+      background: #250d0d;
+      border: 1px solid #742a2a;
+      border-radius: 7px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-lag { position: absolute; top: 0; left: 0; height: 100%; width: 100%; background: #ff9999; transition: width 0.35s ease-out; }
+    .bar-fill { position: absolute; top: 0; left: 0; height: 100%; width: 100%; background: linear-gradient(90deg, #e63946, #ff6b6b); transition: width 0.1s linear; }
+    .bar-text { position: absolute; width: 100%; text-align: center; font-size: 9px; font-weight: bold; line-height: 14px; color: #fff; text-shadow: 1px 1px 1px #000; z-index: 2; }
+
+    .buffs-strip { display: flex; gap: 6px; }
+    .buff-badge {
+      background: rgba(14, 10, 20, 0.85);
+      border: 1px solid var(--gold);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Belt Pouch */
+    .belt-pouch-container {
+      display: flex;
+      gap: 6px;
+      background: rgba(14, 10, 20, 0.78);
+      border: 1.5px solid #4a3a25;
+      border-radius: 8px;
+      padding: 5px 8px;
+      backdrop-filter: blur(4px);
+    }
+
+    .belt-slot {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(180deg, #281f30 0%, #15101a 100%);
+      border: 1.5px solid #5a4628;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .belt-slot:hover:not(.empty) {
+      border-color: var(--gold);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(245, 197, 66, 0.3);
+    }
+    .belt-slot.empty { opacity: 0.45; cursor: not-allowed; }
+    .belt-slot-key { position: absolute; top: 1px; left: 2px; font-size: 8px; font-weight: bold; color: #baa482; }
+    .belt-slot-icon { font-size: 19px; }
+    .belt-slot-qty { position: absolute; bottom: 1px; right: 3px; font-size: 9px; font-weight: 900; color: var(--gold); }
+
+    /* Top Center: Horde Progress */
+    .hud-top-center {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .stage-title-box {
+      background: rgba(18, 14, 24, 0.9);
+      border: 2px solid var(--gold-dark);
+      padding: 4px 18px;
+      border-radius: 6px 6px 0 0;
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .horde-progress-bar {
+      width: 280px;
+      height: 9px;
+      background: #181122;
+      border: 1.5px solid var(--gold-dark);
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .horde-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #7209b7, #f72585); transition: width 0.2s ease; }
+
+    #boss-bar-container {
+      margin-top: 6px;
+      width: 440px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeInDown 0.3s ease;
+    }
+    .boss-name-label { font-size: 13px; font-weight: 900; color: #ff3333; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 8px rgba(255, 0, 0, 0.8); margin-bottom: 2px; }
+    .boss-bar { width: 100%; height: 15px; background: #250808; border: 2px solid #8b0000; border-radius: 4px; overflow: hidden; position: relative; }
+    .boss-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #8b0000, #ff2222, #ffa500); transition: width 0.15s ease; }
+
+    /* Top Right: Balances & Buttons */
+    .hud-top-right {
+      position: absolute;
+      top: 10px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .currency-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(18, 14, 24, 0.88);
+      border: 1.5px solid #5a4628;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .currency-badge.gold { color: var(--gold); border-color: var(--gold-dark); }
+    .currency-badge.gem { color: var(--cyan); border-color: #2b6cb0; }
+
+    .hud-icon-btn {
+      background: rgba(24, 18, 30, 0.88);
+      border: 1.5px solid #5a4628;
+      color: #d4af37;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 17px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .hud-icon-btn:hover { background: #3e3220; border-color: var(--gold); transform: translateY(-2px); }
+
+    /* Bottom HUD Bar */
+    .hud-bottom-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      padding: 8px 16px 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    .leadership-drum-wrap {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      background: radial-gradient(circle, #1a2233 0%, #080d16 100%);
+      border: 3px solid #2b547e;
+      border-radius: 50%;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 16px rgba(76, 201, 240, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: auto;
+      overflow: hidden;
+    }
+
+    .drum-spirit-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 40%;
+      background: linear-gradient(180deg, #64dfdf 0%, #48cae4 40%, #0077b6 100%);
+      transition: height 0.2s ease-out;
+      opacity: 0.88;
+    }
+    .drum-spirit-fill::before {
+      content: "";
+      position: absolute;
+      top: -6px;
+      left: 0;
+      width: 200%;
+      height: 12px;
+      background: #80ffdb;
+      border-radius: 50%;
+      animation: waveMove 3s infinite linear;
+      opacity: 0.7;
+    }
+
+    .drum-text-box { position: relative; z-index: 3; text-align: center; }
+    .drum-val { font-size: 19px; font-weight: 900; color: #fff; line-height: 1; }
+    .drum-lbl { font-size: 9px; font-weight: bold; color: #e0f2fe; text-transform: uppercase; }
+    .drum-rate { font-size: 8px; color: #a7f3d0; font-weight: 600; }
+
+    .deck-container {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+      background: rgba(14, 10, 20, 0.82);
+      padding: 7px 10px;
+      border-radius: 12px;
+      border: 1.5px solid #483925;
+      backdrop-filter: blur(4px);
+    }
+
+    .unit-card {
+      position: relative;
+      width: 74px;
+      height: 92px;
+      background: linear-gradient(180deg, #27211b 0%, #15110e 100%);
+      border: 2px solid #635036;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.15s ease;
+    }
+    .unit-card:hover:not(.disabled) { transform: translateY(-4px); border-color: var(--gold); }
+    .unit-card.disabled { filter: grayscale(0.8) brightness(0.65); cursor: not-allowed; }
+    .card-hotkey { position: absolute; top: 3px; left: 3px; background: rgba(0, 0, 0, 0.7); border: 1px solid #777; color: #eee; font-size: 8px; font-weight: bold; padding: 0 4px; border-radius: 3px; }
+    .card-icon { font-size: 24px; margin-top: 4px; }
+    .card-name { font-size: 9px; font-weight: 800; color: #e8dcc4; text-align: center; }
+    .card-cost-badge { display: flex; align-items: center; gap: 3px; background: rgba(0, 119, 182, 0.85); border: 1px solid #48cae4; border-radius: 10px; padding: 1px 6px; font-size: 9px; font-weight: 800; color: #fff; }
+
+    .card-cd-sweep {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 15px;
+      font-weight: 900;
+      color: #fff;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+    .card-cd-sweep.active { opacity: 1; }
+
+    .skills-container {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+      background: rgba(14, 10, 20, 0.82);
+      padding: 7px 10px;
+      border-radius: 12px;
+      border: 1.5px solid #483925;
+      backdrop-filter: blur(4px);
+    }
+
+    .skill-card {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #30101b 0%, #15080e 100%);
+      border: 2px solid #8e2b3e;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.15s ease;
+    }
+    .skill-card:hover:not(.disabled) { transform: translateY(-3px); border-color: #ff477e; }
+    .skill-card.disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; }
+    .skill-icon { font-size: 24px; }
+    .skill-name { font-size: 8px; font-weight: 700; color: #ffd6e0; text-transform: uppercase; margin-top: 2px; }
+
+    /* Touch Controls */
+    #touch-controls {
+      position: absolute;
+      bottom: 110px;
+      left: 0;
+      width: 100%;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 21;
+    }
+
+    .touch-btn {
+      width: 78px;
+      height: 50px;
+      background: rgba(30, 22, 40, 0.55);
+      border: 1.5px solid rgba(245, 197, 66, 0.45);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      cursor: pointer;
+      backdrop-filter: blur(2px);
+    }
+    .touch-btn:active { background: rgba(245, 197, 66, 0.4); border-color: var(--gold); }
+
+    /* Dojo Upgrade Modal */
+    #upgrade-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(8, 5, 12, 0.93);
+      backdrop-filter: blur(8px);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 60;
+    }
+
+    .dojo-frame {
+      width: 92%;
+      max-width: 980px;
+      background: linear-gradient(180deg, #1e1726 0%, #100b16 100%);
+      border: 3px solid var(--gold);
+      border-radius: 12px;
+      box-shadow: 0 0 40px rgba(184, 134, 11, 0.4), 0 20px 50px rgba(0,0,0,0.9);
+      padding: 20px 26px;
+      display: flex;
+      flex-direction: column;
+      max-height: 92vh;
+    }
+
+    .dojo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      border-bottom: 1px solid #4a3820;
+      padding-bottom: 10px;
+    }
+
+    .dojo-tabs { display: flex; gap: 10px; }
+    .tab-btn {
+      background: #251c30;
+      border: 1.5px solid #5a4628;
+      color: #cdba96;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .tab-btn.active, .tab-btn:hover { background: #4a3418; border-color: var(--gold); color: #fff; }
+
+    .dojo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      overflow-y: auto;
+      max-height: 380px;
+      padding-right: 6px;
+    }
+
+    .dojo-card {
+      background: rgba(28, 22, 36, 0.85);
+      border: 1.5px solid #4e3d5c;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .dojo-card:hover { border-color: var(--gold); background: rgba(42, 33, 54, 0.95); }
+    .dojo-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .dojo-card-icon {
+      font-size: 24px;
+      width: 38px;
+      height: 38px;
+      background: rgba(12, 8, 16, 0.8);
+      border: 1px solid var(--gold-dark);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .dojo-card-name { font-size: 13px; font-weight: 800; color: #fff; }
+    .dojo-card-lvl { font-size: 10px; color: var(--gold); font-weight: 700; }
+    .dojo-card-desc { font-size: 11px; color: #b5a9c0; margin-bottom: 10px; line-height: 1.3; }
+
+    .buy-btn {
+      background: linear-gradient(180deg, #d4af37 0%, #997818 100%);
+      border: 1px solid #ffd700;
+      color: #1a1202;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+    .buy-btn:hover:not(:disabled) { background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%); }
+    .buy-btn:disabled { background: #332d3d; border-color: #554d63; color: #7d758c; cursor: not-allowed; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeInDown { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes pulseGlow { from { filter: drop-shadow(0 0 10px rgba(245, 197, 66, 0.4)); } to { filter: drop-shadow(0 0 30px rgba(230, 57, 70, 0.8)); } }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <!-- Main Game Canvas (Battlefield) -->
+  <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+  <!-- =======================================================================
+       1. START SCREEN VIEW
+       ======================================================================= -->
+  <div class="view-screen active" id="start-screen">
+    <div class="title-crest">⛩️</div>
+    <h1 class="game-main-title">Samurai vs Zombies</h1>
+    <h3 class="game-subtitle">Sacred Village Defense Chronicles</h3>
+    <div class="start-btn-group">
+      <button class="styled-btn" id="btn-begin-campaign">ENTER CAMPAIGN MAP</button>
+      <button class="styled-btn gold-btn" id="btn-quick-play">DEFEND GATE NOW</button>
+    </div>
+
+    <div class="start-features-grid">
+      <div class="feature-card">
+        <h4>⚔️ HERO COMBAT</h4>
+        • Fluid Katana 3-hit combos at &le; 110px.<br>
+        • Yumi Longbow parabolic shots at 110–480px.<br>
+        • Tactical kiting: fire backward while retreating!
+      </div>
+      <div class="feature-card">
+        <h4>🎋 5 ALLIED UNITS</h4>
+        • Peasant Militia: Fear Pitchfork.<br>
+        • Yari Spearman: Shield Wall Formation.<br>
+        • Imperial Bowman: Flaming Volley DoT.<br>
+        • Daimyo Guard: Cleave & Roar Taunt.<br>
+        • Shrine Maiden: Purifying Aura & Heal.
+      </div>
+      <div class="feature-card">
+        <h4>🍱 BATTLE BELT</h4>
+        • Sacred Sake: Instant heal + poise.<br>
+        • Onigiri Bento: +50 Spirit surge.<br>
+        • Fire Bomb: Blazing wall of fire.<br>
+        • Time Talisman: Frozen ice prison.
+      </div>
+      <div class="feature-card">
+        <h4>🗺️ 3-STAR CAMPAIGN</h4>
+        • Replay cleared levels anytime for stars!<br>
+        • ★ Complete Level.<br>
+        • ★★ Gate HP &ge; 50%.<br>
+        • ★★★ Gate HP &ge; 80% Flawless!
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       2. CAMPAIGN OVERWORLD MAP VIEW
+       ======================================================================= -->
+  <div class="view-screen" id="campaign-screen">
+    <div id="campaign-header">
+      <div class="campaign-title-box">
+        <h2 class="campaign-title">Feudal Campaign Map</h2>
+        <p class="campaign-desc">Select any unlocked or completed stage (click to embark or replay for 3 stars!)</p>
+      </div>
+      <div class="campaign-nav-btns">
+        <div class="currency-badge gold"><span>🪙</span> <span id="camp-gold">140</span></div>
+        <div class="currency-badge gem"><span>💎</span> <span id="camp-gem">8</span></div>
+        <button class="styled-btn gold-btn" id="btn-open-dojo" style="padding:6px 16px; font-size:12px;">⛩️ DOJO & SHOP</button>
+        <button class="cancel-btn" id="btn-back-to-start" style="padding:6px 14px; font-size:12px;">TITLE</button>
+      </div>
+    </div>
+    <canvas id="campaignMapCanvas" width="1280" height="720"></canvas>
+  </div>
+
+  <!-- Node Details / Embark Modal -->
+  <div id="node-details-modal">
+    <div class="scroll-frame">
+      <div class="scroll-chapter" id="node-modal-chapter">Chapter 1: The Outer Shrine</div>
+      <h3 class="scroll-title" id="node-modal-title">Gate of First Blood</h3>
+      <p class="scroll-desc" id="node-modal-desc">The demon rift opens at the outer shrine perimeter. Defend the village gate!</p>
+
+      <!-- 3-Star Rating Showcase -->
+      <div class="stars-rating-banner" id="node-modal-stars">
+        <span class="star-icon">⭐</span>
+        <span class="star-icon empty">⭐</span>
+        <span class="star-icon empty">⭐</span>
+      </div>
+
+      <div class="star-criteria-box">
+        <div class="star-criterion" id="star-crit-1"><span>★</span> <span>Victory: Successfully purge the horde</span></div>
+        <div class="star-criterion" id="star-crit-2"><span>★★</span> <span>Stout Defense: Sacred Gate preserves &ge; 50% HP</span></div>
+        <div class="star-criterion" id="star-crit-3"><span>★★★</span> <span>Mastery: Sacred Gate preserves &ge; 80% HP</span></div>
+      </div>
+
+      <div class="node-rewards-box">
+        <div class="reward-pill" style="color:var(--gold);"><span>🪙 Level Gold:</span> <span id="node-reward-gold">120</span></div>
+        <div class="reward-pill" style="color:var(--cyan);"><span>💎 Level Gems:</span> <span id="node-reward-gem">3</span></div>
+      </div>
+
+      <div class="scroll-actions">
+        <button class="cancel-btn" id="btn-cancel-node">RETURN TO MAP</button>
+        <button class="styled-btn" id="btn-embark-battle">EMBARK / REPLAY LEVEL ➔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Shrine Blessing Modal -->
+  <div id="blessing-modal">
+    <div class="scroll-frame" style="max-width: 680px;">
+      <h3 class="scroll-title">⛩️ Sacred Shrine Blessing</h3>
+      <p class="scroll-desc">The Kami spirits offer their divine favor. Choose one permanent blessing for your campaign:</p>
+      <div class="blessings-grid" id="blessings-container"></div>
+      <button class="cancel-btn" id="btn-skip-blessing">LEAVE SHRINE</button>
+    </div>
+  </div>
+
+  <!-- Traveling Tea Merchant Modal -->
+  <div id="merchant-modal">
+    <div class="scroll-frame" style="max-width: 640px;">
+      <h3 class="scroll-title">🍵 Traveling Tea Merchant</h3>
+      <p class="scroll-desc">"Greetings honorable Samurai! Restock your belt pouch with the finest provisions."</p>
+      <div class="dojo-grid" id="merchant-items-container" style="max-height: 280px; margin-bottom: 18px;"></div>
+      <button class="cancel-btn" id="btn-close-merchant">RESUME JOURNEY</button>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       3. COMBAT HUD (BATTLE VIEWPORT)
+       ======================================================================= -->
+  <div id="battle-hud">
+    <!-- Top Left: Hero status & Belt Pouch -->
+    <div class="hud-top-left">
+      <div class="hero-card">
+        <div class="hero-portrait">⚔️</div>
+        <div class="hero-bars">
+          <div class="hero-title-row">
+            <span>SAMURAI JIN</span>
+            <span style="font-size:10px; color:#ff9999;" id="hero-stance-badge">KATANA STANCE</span>
+          </div>
+          <div class="bar-container">
+            <div class="bar-lag" id="hero-hp-lag"></div>
+            <div class="bar-fill" id="hero-hp-fill"></div>
+            <div class="bar-text" id="hero-hp-text">200 / 200</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Buffs -->
+      <div class="buffs-strip" id="active-buffs-strip"></div>
+
+      <!-- Consumable Battle Inventory (Belt Pouch) -->
+      <div class="belt-pouch-container">
+        <div class="belt-slot" id="belt-slot-sake" title="Sacred Sake Gourd [Z / 6]: Heals 60% HP + Knockback Immunity">
+          <span class="belt-slot-key">Z</span>
+          <div class="belt-slot-icon">🍶</div>
+          <span class="belt-slot-qty" id="qty-sake">2</span>
+        </div>
+        <div class="belt-slot" id="belt-slot-bento" title="Onigiri Bento [X / 7]: +50 Leadership Spirit Surge">
+          <span class="belt-slot-key">X</span>
+          <div class="belt-slot-icon">🍙</div>
+          <span class="belt-slot-qty" id="qty-bento">2</span>
+        </div>
+        <div class="belt-slot" id="belt-slot-bomb" title="Kagutsuchi Fire Bomb [C / 8]: Wall of Fire Ground Trap">
+          <span class="belt-slot-key">C</span>
+          <div class="belt-slot-icon">💣</div>
+          <span class="belt-slot-qty" id="qty-bomb">2</span>
+        </div>
+        <div class="belt-slot" id="belt-slot-talisman" title="Kami Time Talisman [V / 9]: Freeze All Undead in Ice for 4.5s">
+          <span class="belt-slot-key">V</span>
+          <div class="belt-slot-icon">📜</div>
+          <span class="belt-slot-qty" id="qty-talisman">1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Center: Horde Progression & Boss Bar -->
+    <div class="hud-top-center">
+      <div class="stage-title-box">
+        <span>⛩️ HORDE MARCH</span>
+        <span style="color:var(--gold); font-size:12px;" id="stage-wave-info">STAGE 1</span>
+      </div>
+      <div class="horde-progress-bar">
+        <div class="horde-progress-fill" id="horde-progress-fill"></div>
+      </div>
+
+      <!-- Boss Bar -->
+      <div id="boss-bar-container">
+        <div class="boss-name-label" id="boss-name-label">👹 RED ONI WARLORD</div>
+        <div class="boss-bar">
+          <div class="boss-bar-fill" id="boss-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Right: Balances & Buttons -->
+    <div class="hud-top-right">
+      <div class="currency-badge gold"><span>🪙</span> <span id="hud-gold">140</span></div>
+      <div class="currency-badge gem"><span>💎</span> <span id="hud-gem">8</span></div>
+      <button class="hud-icon-btn" id="btn-toggle-sound" title="Mute/Unmute Audio (M)">🔊</button>
+      <button class="hud-icon-btn" id="btn-pause-game" title="Pause Game (P)">⏸️</button>
+      <button class="hud-icon-btn" id="btn-exit-to-map" title="Retreat to Map">🗺️</button>
+    </div>
+
+    <!-- Mobile Virtual Touch Controls -->
+    <div id="touch-controls">
+      <button class="touch-btn" id="btn-touch-left">◀ RETREAT</button>
+      <button class="touch-btn" id="btn-touch-right">ADVANCE ▶</button>
+    </div>
+
+    <!-- Bottom HUD Bar -->
+    <div class="hud-bottom-bar">
+      <!-- Rotating Drum Leadership Meter -->
+      <div class="leadership-drum-wrap" title="Leadership Spirit">
+        <div class="drum-spirit-fill" id="drum-spirit-fill"></div>
+        <div class="drum-text-box">
+          <div class="drum-val" id="spirit-val">40</div>
+          <div class="drum-lbl">SPIRIT</div>
+          <div class="drum-rate" id="spirit-rate">+2.0/s</div>
+        </div>
+      </div>
+
+      <!-- 5 Ally Cards Deck -->
+      <div class="deck-container">
+        <div class="unit-card" id="card-peasant" data-unit="peasant" title="Peasant Militia [1]: Panic Pitchfork Fear">
+          <span class="card-hotkey">1</span>
+          <div class="card-icon">🌾</div>
+          <div class="card-name">Militia</div>
+          <div class="card-cost-badge"><span>🍵</span>15</div>
+          <div class="card-cd-sweep" id="cd-peasant">3</div>
+        </div>
+        <div class="unit-card" id="card-spearman" data-unit="spearman" title="Yari Spearman [2]: Shield Wall Knockback">
+          <span class="card-hotkey">2</span>
+          <div class="card-icon">🎋</div>
+          <div class="card-name">Spearman</div>
+          <div class="card-cost-badge"><span>🍵</span>35</div>
+          <div class="card-cd-sweep" id="cd-spearman">6</div>
+        </div>
+        <div class="unit-card" id="card-bowman" data-unit="bowman" title="Imperial Bowman [3]: Flaming Volley DoT">
+          <span class="card-hotkey">3</span>
+          <div class="card-icon">🏹</div>
+          <div class="card-name">Bowman</div>
+          <div class="card-cost-badge"><span>🍵</span>50</div>
+          <div class="card-cd-sweep" id="cd-bowman">8</div>
+        </div>
+        <div class="unit-card" id="card-guard" data-unit="guard" title="Daimyo Guard [4]: Iron Cleave & Roar Taunt">
+          <span class="card-hotkey">4</span>
+          <div class="card-icon">🛡️</div>
+          <div class="card-name">Guard</div>
+          <div class="card-cost-badge"><span>🍵</span>80</div>
+          <div class="card-cd-sweep" id="cd-guard">14</div>
+        </div>
+        <div class="unit-card" id="card-maiden" data-unit="maiden" title="Shrine Maiden [5]: Purifying Radiance & Heal">
+          <span class="card-hotkey">5</span>
+          <div class="card-icon">⛩️</div>
+          <div class="card-name">Maiden</div>
+          <div class="card-cost-badge"><span>🍵</span>95</div>
+          <div class="card-cd-sweep" id="cd-maiden">16</div>
+        </div>
+      </div>
+
+      <!-- Active Hero Skills -->
+      <div class="skills-container">
+        <div class="skill-card" id="skill-dash" title="Katana Dash [Q]: 300px Invulnerable Dash & Slashes">
+          <span class="card-hotkey">Q</span>
+          <div class="skill-icon">⚡</div>
+          <div class="skill-name">Dash</div>
+          <div class="card-cd-sweep" id="cd-dash">12</div>
+        </div>
+        <div class="skill-card" id="skill-hail" title="Arrow Hail [W]: Fiery Sky Barrage">
+          <span class="card-hotkey">W</span>
+          <div class="skill-icon">🌧️</div>
+          <div class="skill-name">Arrow Hail</div>
+          <div class="card-cd-sweep" id="cd-hail">18</div>
+        </div>
+        <div class="skill-card" id="skill-cry" title="War Cry [E]: +50% Speed & +40% Damage to Allies">
+          <span class="card-hotkey">E</span>
+          <div class="skill-icon">📯</div>
+          <div class="skill-name">War Cry</div>
+          <div class="card-cd-sweep" id="cd-cry">25</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       4. DOJO & BLACKSMITH UPGRADE SHOP MODAL
+       ======================================================================= -->
+  <div id="upgrade-modal">
+    <div class="dojo-frame">
+      <div class="dojo-header">
+        <div>
+          <h2 style="font-size:22px; color:var(--gold); font-weight:900;">⛩️ DOJO & BLACKSMITH</h2>
+          <p style="font-size:12px; color:#baa482;">Hone your blades, empower your loyal army, and purchase battle provisions.</p>
+        </div>
+        <div class="dojo-tabs">
+          <button class="tab-btn active" data-tab="hero">SAMURAI</button>
+          <button class="tab-btn" data-tab="village">VILLAGE & SPIRIT</button>
+          <button class="tab-btn" data-tab="units">ALLIES</button>
+          <button class="tab-btn" data-tab="belt">BELT POUCH</button>
+        </div>
+        <button class="cancel-btn" id="btn-close-dojo" style="padding:6px 16px;">CLOSE</button>
+      </div>
+      <div class="dojo-grid" id="dojo-items-grid"></div>
+    </div>
+  </div>
+
+  <!-- End Game Modal (Victory / Defeat with 3-Star Rating) -->
+  <div id="end-game-modal">
+    <div class="scroll-frame">
+      <h2 class="scroll-title" id="end-modal-title" style="font-size:32px;">VICTORY ACHIEVED</h2>
+      <p class="scroll-desc" id="end-modal-desc">The sacred grounds remain pure!</p>
+
+      <!-- 3-Star Rating Outcome -->
+      <div class="stars-rating-banner" id="victory-stars-banner">
+        <span class="star-icon" id="end-star-1">⭐</span>
+        <span class="star-icon" id="end-star-2">⭐</span>
+        <span class="star-icon" id="end-star-3">⭐</span>
+      </div>
+
+      <div style="font-size:13px; color:var(--gold); font-weight:bold; margin-bottom:12px;" id="victory-gate-integrity">
+        Sacred Gate Integrity: 100%
+      </div>
+
+      <div class="node-rewards-box" id="end-modal-rewards">
+        <div class="reward-pill" style="color:var(--gold);"><span>🪙 Earned:</span> <span id="end-gold-earned">+150</span></div>
+        <div class="reward-pill" style="color:var(--cyan);"><span>💎 Earned:</span> <span id="end-gem-earned">+4</span></div>
+      </div>
+      <button class="styled-btn" id="btn-end-continue">RETURN TO MAP</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * =============================================================================
+ * SAMURAI VS ZOMBIES: SACRED CHRONICLES
+ * Complete 2D Horizontal Lane-Defense Game with Interactive Overworld Campaign,
+ * 3-Star Rating System, Replayable Nodes, and Zero External Dependencies
+ * =============================================================================
+ */
+
+// =============================================================================
+// AUDIO ENGINE (WEB AUDIO API SYNTHESIZER)
+// =============================================================================
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+    this.musicPlaying = false;
+    this.musicTimer = null;
+    this.step = 0;
+  }
+
+  init() {
+    try {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+      }
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    } catch (e) {}
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    if (this.muted && this.musicTimer) {
+      clearInterval(this.musicTimer);
+      this.musicPlaying = false;
+    } else if (!this.muted && !this.musicPlaying) {
+      this.startTaikoRhythm();
+    }
+    return !this.muted;
+  }
+
+  playSlash(isHeavy = false) {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.12);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(isHeavy ? 1100 : 2200, now);
+      filter.frequency.exponentialRampToValueAtTime(350, now + 0.12);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(isHeavy ? 0.45 : 0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      noise.start(now);
+    } catch (e) {}
+  }
+
+  playParry() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(3200, now);
+      osc.frequency.setValueAtTime(2600, now + 0.03);
+
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    } catch (e) {}
+  }
+
+  playBowTwang() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(480, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    } catch (e) {}
+  }
+
+  playArrowHit() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(240, now);
+      osc.frequency.exponentialRampToValueAtTime(55, now + 0.08);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch (e) {}
+  }
+
+  playExplosion() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(130, now);
+      osc.frequency.exponentialRampToValueAtTime(25, now + 0.6);
+
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(320, now);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.65);
+    } catch (e) {}
+  }
+
+  playIceFreeze() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      [1400, 1800, 2200, 2800].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+        gain.gain.setValueAtTime(0.18, now + idx * 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.35);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.04);
+        osc.stop(now + idx * 0.04 + 0.35);
+      });
+    } catch (e) {}
+  }
+
+  playHeal() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      [880, 1100, 1320].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+        gain.gain.setValueAtTime(0.15, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.4);
+      });
+    } catch (e) {}
+  }
+
+  playWarHorn() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      [220, 277.18, 329.63, 440].forEach((freq) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.14, now + 0.35);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(900, now);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 1.4);
+      });
+    } catch (e) {}
+  }
+
+  playGong() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 1.8);
+
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 2.0);
+    } catch (e) {}
+  }
+
+  playCoin() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(988, now);
+      osc.frequency.setValueAtTime(1320, now + 0.05);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch (e) {}
+  }
+
+  startTaikoRhythm() {
+    if (this.musicPlaying || this.muted) return;
+    this.musicPlaying = true;
+    const bpm = 118;
+    const stepDuration = (60 / bpm) / 4;
+    const pentatonic = [220, 246.94, 261.63, 329.63, 349.23, 440];
+
+    this.musicTimer = setInterval(() => {
+      if (!this.musicPlaying || this.muted || !this.ctx) return;
+      const now = this.ctx.currentTime;
+      const s = this.step % 16;
+
+      if (s === 0 || s === 8 || s === 14) {
+        this.synthTaiko(now, s === 0 ? 0.35 : 0.22);
+      } else if (s === 4 || s === 12) {
+        this.synthRim(now, 0.15);
+      }
+
+      if (s === 0 || s === 3 || s === 6 || s === 10 || s === 13) {
+        const note = pentatonic[(this.step + Math.floor(this.step / 8)) % pentatonic.length];
+        this.synthShamisen(now, note);
+      }
+
+      this.step++;
+    }, stepDuration * 1000);
+  }
+
+  synthTaiko(time, volume) {
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(110, time);
+      osc.frequency.exponentialRampToValueAtTime(40, time + 0.25);
+      gain.gain.setValueAtTime(volume, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(time);
+      osc.stop(time + 0.25);
+    } catch (e) {}
+  }
+
+  synthRim(time, volume) {
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, time);
+      osc.frequency.exponentialRampToValueAtTime(160, time + 0.06);
+      gain.gain.setValueAtTime(volume, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(time);
+      osc.stop(time + 0.06);
+    } catch (e) {}
+  }
+
+  synthShamisen(time, freq) {
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, time);
+      gain.gain.setValueAtTime(0.09, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(freq * 1.5, time);
+      filter.Q.value = 3;
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(time);
+      osc.stop(time + 0.18);
+    } catch (e) {}
+  }
+}
+
+const audio = new SoundEngine();
+
+// =============================================================================
+// GLOBAL CONFIG, CONSTANTS & PERSISTENT STATE
+// =============================================================================
+const WORLD_WIDTH = 3600;
+const WORLD_HEIGHT = 720;
+const GROUND_Y = 570;
+const VILLAGE_GATE_X = 90;
+const DEMON_PORTAL_X = 3480;
+
+// Finite State Machine Enum
+const GAME_STATE = {
+  STATE_START: 'STATE_START',
+  STATE_CAMPAIGN_MAP: 'STATE_CAMPAIGN_MAP',
+  STATE_NODE_PREVIEW: 'STATE_NODE_PREVIEW',
+  STATE_BATTLE_ACTIVE: 'STATE_BATTLE_ACTIVE',
+  STATE_VICTORY_DEFEAT: 'STATE_VICTORY_DEFEAT'
+};
+
+class StateManager {
+  constructor() {
+    this.currentState = GAME_STATE.STATE_START;
+    this.previousState = null;
+    this.payload = null;
+    this.listeners = [];
+  }
+
+  transition(newState, payload = null) {
+    if (this.currentState === newState && newState !== GAME_STATE.STATE_NODE_PREVIEW) return;
+    const fromState = this.currentState;
+    console.log(`[FSM] Transition: ${fromState} -> ${newState}`, payload || '');
+    this.previousState = fromState;
+    this.currentState = newState;
+    this.payload = payload;
+
+    // Handle State Exits
+    if (fromState === GAME_STATE.STATE_BATTLE_ACTIVE) {
+      stopBattleLoop();
+    } else if (fromState === GAME_STATE.STATE_CAMPAIGN_MAP && newState !== GAME_STATE.STATE_NODE_PREVIEW) {
+      stopCampaignLoop();
+    }
+
+    // Handle State Enters
+    if (newState === GAME_STATE.STATE_START) {
+      document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('start-screen').classList.add('active');
+      document.getElementById('battle-hud').style.display = 'none';
+      document.getElementById('node-details-modal').style.display = 'none';
+      document.getElementById('end-game-modal').style.display = 'none';
+      stopBattleLoop();
+      stopCampaignLoop();
+    } else if (newState === GAME_STATE.STATE_CAMPAIGN_MAP) {
+      document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('campaign-screen').classList.add('active');
+      document.getElementById('battle-hud').style.display = 'none';
+      document.getElementById('node-details-modal').style.display = 'none';
+      document.getElementById('end-game-modal').style.display = 'none';
+      startCampaignLoop();
+      updateHUDCounters();
+    } else if (newState === GAME_STATE.STATE_NODE_PREVIEW) {
+      openBattlePreviewModal(payload);
+    } else if (newState === GAME_STATE.STATE_BATTLE_ACTIVE) {
+      document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('battle-hud').style.display = 'block';
+      document.getElementById('node-details-modal').style.display = 'none';
+      document.getElementById('end-game-modal').style.display = 'none';
+      startBattle(payload);
+      startBattleLoop();
+    } else if (newState === GAME_STATE.STATE_VICTORY_DEFEAT) {
+      // Victory/Defeat modal handled in endBattle
+    }
+
+    for (const fn of this.listeners) fn(fromState, newState, payload);
+  }
+
+  onStateChange(fn) {
+    this.listeners.push(fn);
+  }
+}
+
+const stateManager = new StateManager();
+
+// Global runtime stats & economy
+const state = {
+  paused: false,
+  cameraX: 0,
+  screenShake: 0,
+
+  gold: 140,
+  gems: 8,
+
+  belt: { sake: 2, bento: 2, bomb: 2, talisman: 1 },
+  buffs: { knockbackImmunity: 0, timeFreeze: 0, warCry: 0 },
+  blessings: { moveSpeed: 0, critChance: 0, startSpirit: 0, maxHp: 0 },
+
+  upgrades: {
+    katana: { lvl: 1, max: 10, cost: 60, costType: 'gold', name: 'Katana Honing', desc: '+25% Melee Slash Damage & +3% Crit Chance' },
+    bow: { lvl: 1, max: 10, cost: 70, costType: 'gold', name: 'Compound Bow Crafting', desc: '+20% Arrow Velocity, Range & Armor-Piercing' },
+    armor: { lvl: 1, max: 10, cost: 75, costType: 'gold', name: 'Master O-Yoroi Plate', desc: '+45 Max HP & +1.6 HP/s Passive Regen' },
+    flashStep: { lvl: 0, max: 1, cost: 180, costType: 'gold', name: 'Flash Step (Dodge Roll)', desc: 'Double-tap A/D or press SPACE for invulnerable sprint roll' },
+    horn: { lvl: 1, max: 10, cost: 85, costType: 'gold', name: 'Command Horn', desc: 'Increases max Leadership pool (100 -> 250) and regen rate' },
+    gate: { lvl: 1, max: 10, cost: 110, costType: 'gold', name: 'Sacred Village Gate', desc: '+600 Gate HP & automated roof archers' },
+
+    peasant: { lvl: 1, max: 5, cost: 2, costType: 'gem', name: 'Militia Training', desc: 'HP +25%, Dmg +20%; Lv 5 unlocks Reinforced Pitchforks' },
+    spearman: { lvl: 1, max: 5, cost: 3, costType: 'gem', name: 'Spear Drills', desc: 'HP +30%, Dmg +25%; Lv 5 unlocks Tower Shield Wall' },
+    bowman: { lvl: 1, max: 5, cost: 4, costType: 'gem', name: 'Imperial Archery', desc: 'Volley rate +20%; Lv 5 unlocks Twin Fire Arrows' },
+    guard: { lvl: 1, max: 5, cost: 5, costType: 'gem', name: 'Daimyo Honor', desc: 'Armor +40%, Cleave +25px; Lv 5 unlocks Battle Roar Taunt' },
+    maiden: { lvl: 1, max: 5, cost: 5, costType: 'gem', name: 'Miko Devotion', desc: 'Aura radius +30px, Heal +35%; Lv 5 purifies debuffs instantly' }
+  },
+
+  battle: {
+    active: false,
+    _ending: false,
+    currentNode: null,
+    gateHp: 2000,
+    gateMaxHp: 2000,
+    gateArchers: 0,
+    gateArcherTimer: 0,
+
+    spirit: 40,
+    maxSpirit: 100,
+    spiritRegen: 2.0,
+
+    waveTimer: 0,
+    totalEnemiesInWave: 0,
+    spawnQueue: [],
+    bossActive: false,
+    activeBoss: null
+  },
+
+  keys: {},
+  lastTapKey: null,
+  lastTapTime: 0,
+  touchMoveLeft: false,
+  touchMoveRight: false,
+
+  summonCooldowns: { peasant: 0, spearman: 0, bowman: 0, guard: 0, maiden: 0 },
+  skillCooldowns: { dash: 0, hail: 0, cry: 0 }
+};
+
+// =============================================================================
+// OVERWORLD CAMPAIGN DATA SCHEMA & PERSISTENT MODEL
+// =============================================================================
+const STORAGE_KEY = 'SVZ_CAMPAIGN_SAVE';
+
+const DEFAULT_CAMPAIGN_NODES = [
+  // Chapter 1: The Outer Shrine
+  {
+    id: 'c1_gate',
+    title: '1. Gate of First Blood',
+    chapter: 'Chapter 1: The Outer Shrine',
+    type: 'BATTLE',
+    x: 180,
+    y: 360,
+    radius: 34,
+    status: 'CURRENT',
+    connectedNodeIds: ['c1_shrine', 'c1_bamboo'],
+    reward: { gold: 120, gems: 3 },
+    stars: 0,
+    desc: 'The demon rift opens at the outer shrine perimeter. Defend the village gate against rotting ashigaru!',
+    wavesConfig: [
+      { delay: 0.0, type: 'peasant', mult: 1.0 },
+      { delay: 2.0, type: 'peasant', mult: 1.0 },
+      { delay: 4.5, type: 'peasant', mult: 1.0 },
+      { delay: 7.0, type: 'peasant', mult: 1.0 },
+      { delay: 10.0, type: 'ninja', mult: 1.0 },
+      { delay: 12.5, type: 'ninja', mult: 1.0 },
+      { delay: 15.0, type: 'peasant', mult: 1.1 },
+      { delay: 18.0, type: 'ninja', mult: 1.1 },
+      { delay: 22.0, type: 'skeletal_samurai', mult: 1.1 }
+    ]
+  },
+  {
+    id: 'c1_shrine',
+    title: 'Pine Shrine (Kami Blessing)',
+    chapter: 'Chapter 1: The Outer Shrine',
+    type: 'SHRINE',
+    x: 380,
+    y: 220,
+    radius: 34,
+    status: 'LOCKED',
+    connectedNodeIds: ['c2_merchant', 'c2_gate'],
+    reward: { gold: 0, gems: 0 },
+    stars: 0,
+    desc: 'Ancient Kami shrine blessed with spirit fountains. Attune your soul for a permanent run blessing.',
+    wavesConfig: []
+  },
+  {
+    id: 'c1_bamboo',
+    title: '2. Sacred Bamboo Grove',
+    chapter: 'Chapter 1: The Outer Shrine',
+    type: 'BATTLE',
+    x: 380,
+    y: 480,
+    radius: 34,
+    status: 'LOCKED',
+    connectedNodeIds: ['c2_gate'],
+    reward: { gold: 180, gems: 6 },
+    stars: 0,
+    desc: 'Challenge Node: Swarms of swift Shadow Ninja & Ghouls in dense bamboo. High difficulty, 2x Demon Gems!',
+    wavesConfig: [
+      { delay: 0.0, type: 'ninja', mult: 1.1 },
+      { delay: 1.5, type: 'ninja', mult: 1.1 },
+      { delay: 3.5, type: 'ninja', mult: 1.2 },
+      { delay: 5.5, type: 'ninja', mult: 1.2 },
+      { delay: 8.0, type: 'spitter', mult: 1.1 },
+      { delay: 10.5, type: 'spitter', mult: 1.2 },
+      { delay: 13.0, type: 'ninja', mult: 1.2 },
+      { delay: 16.0, type: 'ninja', mult: 1.3 },
+      { delay: 20.0, type: 'skeletal_samurai', mult: 1.3 }
+    ]
+  },
+
+  // Chapter 2: The Bamboo Crossroads
+  {
+    id: 'c2_merchant',
+    title: 'Tea Merchant (Provisions)',
+    chapter: 'Chapter 2: Bamboo Crossroads',
+    type: 'MERCHANT',
+    x: 580,
+    y: 200,
+    radius: 34,
+    status: 'LOCKED',
+    connectedNodeIds: ['c2_gate2'],
+    reward: { gold: 0, gems: 0 },
+    stars: 0,
+    desc: 'Rest and stock your battle belt pouch with discounted sake, onigiri bento, fire bombs, and time talismans.',
+    wavesConfig: []
+  },
+  {
+    id: 'c2_gate',
+    title: '3. Fortified River Crossing',
+    chapter: 'Chapter 2: Bamboo Crossroads',
+    type: 'BATTLE',
+    x: 600,
+    y: 400,
+    radius: 34,
+    status: 'LOCKED',
+    connectedNodeIds: ['c2_gate2', 'c2_bamboo2'],
+    reward: { gold: 220, gems: 4 },
+    stars: 0,
+    desc: 'Corpse archers and Blight Spitters hold the ancient stone bridge. Shatter their line and push forward!',
+    wavesConfig: [
+      { delay: 0.0, type: 'peasant', mult: 1.2 },
+      { delay: 2.0, type: 'peasant', mult: 1.2 },
+      { delay: 4.0, type: 'spitter', mult: 1.2 },
+      { delay: 7.0, type: 'ninja', mult: 1.2 },
+      { delay: 9.5, type: 'spitter', mult: 1.3 },
+      { delay: 12.0, type: 'skeletal_samurai', mult: 1.2 },
+      { delay: 15.0, type: 'skeletal_samurai', mult: 1.3 },
+      { delay: 19.0, type: 'spitter', mult: 1.3 },
+      { delay: 23.0, type: 'ninja', mult: 1.3 }
+    ]
+  },
+  {
+    id: 'c2_bamboo2',
+    title: '4. Shadow Grove Outpost',
+    chapter: 'Chapter 2: Bamboo Crossroads',
+    type: 'BATTLE',
+    x: 740,
+    y: 520,
+    radius: 34,
+    status: 'LOCKED',
+    connectedNodeIds: ['c3_shrine'],
+    reward: { gold: 260, gems: 8 },
+    stars: 0,
+    desc: 'Challenge Node: Ambushed by shadow ninja cloaked in purple demon mist. Double soul gems reward!',
+    wavesConfig: [
+      { delay: 0.0, type: 'ninja', mult: 1.3 },
+      { delay: 1.5, type: 'ninja', mult: 1.3 },
+      { delay: 3.0, type: 'ninja', mult: 1.3 },
+      { delay: 5.5, type: 'spitter', mult: 1.3 },
+      { delay: 8.0, type: 'spitter', mult: 1.4 },
+      { delay: 11.0, type: 'skeletal_samurai', mult: 1.3 },
+      { delay: 14.0, type: 'ninja', mult: 1.4 },
+      { delay: 18.0, type: 'skeletal_samurai', mult: 1.4 }
+    ]
+  },
+
+  // Chapter 3: The Crimson Torii Fort
+  {
+    id: 'c2_gate2',
+    title: '5. Red Torii Fortress',
+    chapter: 'Chapter 3: Crimson Torii Fort',
+    type: 'BATTLE',
+    x: 800,
+    y: 280,
+    radius: 34,
+    status: 'LOCKED',
+    connectedNodeIds: ['c3_shrine', 'c3_oni'],
+    reward: { gold: 300, gems: 5 },
+    stars: 0,
+    desc: 'Heavy skeletal samurai legion marching under blood-red banners. Deploy your Daimyo Guards and Spear Walls!',
+    wavesConfig: [
+      { delay: 0.0, type: 'skeletal_samurai', mult: 1.2 },
+      { delay: 2.5, type: 'peasant', mult: 1.3 },
+      { delay: 5.0, type: 'ninja', mult: 1.3 },
+      { delay: 8.0, type: 'skeletal_samurai', mult: 1.3 },
+      { delay: 11.0, type: 'spitter', mult: 1.3 },
+      { delay: 14.0, type: 'skeletal_samurai', mult: 1.4 },
+      { delay: 17.5, type: 'spitter', mult: 1.4 },
+      { delay: 21.0, type: 'skeletal_samurai', mult: 1.5 }
+    ]
+  },
+  {
+    id: 'c3_shrine',
+    title: 'Wind Shrine (Blessing)',
+    chapter: 'Chapter 3: Crimson Torii Fort',
+    type: 'SHRINE',
+    x: 960,
+    y: 440,
+    radius: 34,
+    status: 'LOCKED',
+    connectedNodeIds: ['c3_oni'],
+    reward: { gold: 0, gems: 0 },
+    stars: 0,
+    desc: 'Attune your spirit to gain a potent combat blessing before entering the demon core.',
+    wavesConfig: []
+  },
+  {
+    id: 'c3_oni',
+    title: '6. Ashen Citadel (Red Oni Boss)',
+    chapter: 'Chapter 3: Crimson Torii Fort',
+    type: 'BOSS',
+    x: 1020,
+    y: 260,
+    radius: 38,
+    status: 'LOCKED',
+    connectedNodeIds: ['c4_kyubi'],
+    reward: { gold: 450, gems: 12 },
+    stars: 0,
+    isBoss: true,
+    bossType: 'oni',
+    desc: 'BOSS BATTLE: The towering Red Oni Warlord descends wielding his massive spiked Kanabo club!',
+    wavesConfig: [
+      { delay: 0.0, type: 'peasant', mult: 1.3 },
+      { delay: 2.0, type: 'peasant', mult: 1.3 },
+      { delay: 4.5, type: 'ninja', mult: 1.3 },
+      { delay: 7.0, type: 'skeletal_samurai', mult: 1.3 },
+      { delay: 10.0, type: 'spitter', mult: 1.4 },
+      { delay: 13.0, type: 'skeletal_samurai', mult: 1.4 },
+      { delay: 17.0, type: 'oni_warlord', mult: 1.2 }
+    ]
+  },
+
+  // Chapter 4: The Nether Rift
+  {
+    id: 'c4_kyubi',
+    title: '7. Rift of Kyubi (Final Boss)',
+    chapter: 'Chapter 4: The Nether Rift',
+    type: 'BOSS',
+    x: 1200,
+    y: 360,
+    radius: 40,
+    status: 'LOCKED',
+    connectedNodeIds: [],
+    reward: { gold: 1000, gems: 30 },
+    stars: 0,
+    isBoss: true,
+    bossType: 'kyubi',
+    desc: 'FINAL CONFRONTATION: The Nine-Tailed spectral fox demon radiating purple spiritual hellfire!',
+    wavesConfig: [
+      { delay: 0.0, type: 'ninja', mult: 1.4 },
+      { delay: 1.5, type: 'ninja', mult: 1.4 },
+      { delay: 3.5, type: 'skeletal_samurai', mult: 1.4 },
+      { delay: 6.0, type: 'spitter', mult: 1.4 },
+      { delay: 8.5, type: 'spitter', mult: 1.5 },
+      { delay: 11.5, type: 'skeletal_samurai', mult: 1.5 },
+      { delay: 14.5, type: 'ninja', mult: 1.5 },
+      { delay: 18.0, type: 'corrupted_kyubi', mult: 1.3 }
+    ]
+  }
+];
+
+// Persistent campaign state container
+const gameState = {
+  campaign: {
+    nodes: JSON.parse(JSON.stringify(DEFAULT_CAMPAIGN_NODES)),
+    currentNodeId: 'c1_gate',
+    mapShake: 0,
+    hoverNode: null
+  }
+};
+
+function saveCampaignToStorage() {
+  try {
+    const nodeStates = {};
+    for (const n of gameState.campaign.nodes) {
+      nodeStates[n.id] = {
+        status: n.status,
+        stars: n.stars || 0
+      };
+    }
+    const saveData = {
+      version: 2,
+      currentNodeId: gameState.campaign.currentNodeId,
+      gold: state.gold,
+      gems: state.gems,
+      belt: state.belt,
+      upgrades: state.upgrades,
+      blessings: state.blessings,
+      nodeStates
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+    console.log('[Campaign Storage] Saved successfully.');
+  } catch (e) {
+    console.warn('[Campaign Storage] Save failed:', e);
+  }
+}
+
+function loadCampaignFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      console.log('[Campaign Storage] No existing save found. Using default stage 1.');
+      return;
+    }
+    const data = JSON.parse(raw);
+    if (!data || !data.nodeStates) return;
+
+    if (typeof data.gold === 'number') state.gold = data.gold;
+    if (typeof data.gems === 'number') state.gems = data.gems;
+    if (data.belt) Object.assign(state.belt, data.belt);
+    if (data.upgrades) {
+      for (const k in data.upgrades) {
+        if (state.upgrades[k]) {
+          state.upgrades[k].lvl = data.upgrades[k].lvl || state.upgrades[k].lvl;
+          state.upgrades[k].cost = data.upgrades[k].cost || state.upgrades[k].cost;
+        }
+      }
+    }
+    if (data.blessings) Object.assign(state.blessings, data.blessings);
+
+    for (const node of gameState.campaign.nodes) {
+      if (data.nodeStates[node.id]) {
+        node.status = data.nodeStates[node.id].status || node.status;
+        node.stars = data.nodeStates[node.id].stars || 0;
+      }
+    }
+    if (data.currentNodeId && gameState.campaign.nodes.some(n => n.id === data.currentNodeId)) {
+      gameState.campaign.currentNodeId = data.currentNodeId;
+    }
+    console.log('[Campaign Storage] Loaded save successfully.');
+  } catch (e) {
+    console.warn('[Campaign Storage] Load error, resetting to default:', e);
+  }
+}
+
+const availableBlessings = [
+  { id: 'wind_stride', name: 'Wind Stride', icon: '🍃', effect: '+20% Hero & Ally Movement Speed', apply: () => state.blessings.moveSpeed += 0.2 },
+  { id: 'divine_edge', name: 'Divine Edge', icon: '⚔️', effect: '+12% Critical Strike Chance (2x Damage)', apply: () => state.blessings.critChance += 0.12 },
+  { id: 'spirit_font', name: 'Spirit Font', icon: '🍵', effect: '+30 Starting Leadership & +0.6 Regen/s', apply: () => { state.blessings.startSpirit += 30; state.battle.spiritRegen += 0.6; } },
+  { id: 'iron_vitality', name: 'Iron Vitality', icon: '🛡️', effect: '+25% Maximum Health & +2 HP/s Regen', apply: () => state.blessings.maxHp += 0.25 }
+];
+
+// COMBAT PARTICLES, HAZARDS & PROJECTILES
+// =============================================================================
+let floatingTexts = [];
+let particles = [];
+let lootDrops = [];
+let arrows = [];
+let groundHazards = [];
+let allies = [];
+let enemies = [];
+
+class FloatingText {
+  constructor(x, y, text, color = '#fff', fontSize = 15, isCrit = false) {
+    this.x = x + (Math.random() * 20 - 10);
+    this.y = y - 20;
+    this.text = text;
+    this.color = color;
+    this.fontSize = fontSize;
+    this.isCrit = isCrit;
+    this.vy = isCrit ? -2.6 : -1.8;
+    this.vx = (Math.random() - 0.5) * 1.6;
+    this.alpha = 1;
+    this.life = 1.0;
+  }
+
+  update(dt) {
+    this.y += this.vy * 60 * dt;
+    this.x += this.vx * 60 * dt;
+    this.vy += 0.05 * 60 * dt;
+    this.life -= dt * 1.3;
+    this.alpha = Math.max(0, this.life);
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
+    ctx.font = `${this.isCrit ? '900' : '700'} ${this.fontSize}px sans-serif`;
+    ctx.fillStyle = this.color;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(this.text, this.x, this.y);
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.restore();
+  }
+}
+
+class Particle {
+  constructor(x, y, type = 'spark') {
+    this.x = x;
+    this.y = y;
+    this.type = type;
+    this.life = 1.0;
+    this.decay = Math.random() * 0.8 + 0.8;
+
+    if (type === 'spark') {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 5 + 2;
+      this.vx = Math.cos(angle) * speed;
+      this.vy = Math.sin(angle) * speed;
+      this.color = '#ffe066';
+      this.size = Math.random() * 3 + 2;
+    } else if (type === 'slashArc') {
+      this.vx = (Math.random() - 0.5) * 2;
+      this.vy = (Math.random() - 0.5) * 2;
+      this.color = '#4cc9f0';
+      this.size = Math.random() * 5 + 3;
+    } else if (type === 'blood') {
+      this.vx = (Math.random() - 0.5) * 4;
+      this.vy = -Math.random() * 3 - 1;
+      this.color = '#800f2f';
+      this.size = Math.random() * 4 + 2;
+    } else if (type === 'bone') {
+      this.vx = (Math.random() - 0.5) * 5;
+      this.vy = -Math.random() * 4 - 2;
+      this.color = '#f1faee';
+      this.size = Math.random() * 5 + 3;
+    } else if (type === 'darkSmoke') {
+      this.vx = (Math.random() - 0.5) * 1.5;
+      this.vy = -Math.random() * 2 - 0.5;
+      this.color = Math.random() > 0.5 ? '#7209b7' : '#b5179e';
+      this.size = Math.random() * 6 + 3;
+    } else if (type === 'fire') {
+      this.vx = (Math.random() - 0.5) * 1.5;
+      this.vy = -Math.random() * 3 - 1;
+      this.color = Math.random() > 0.5 ? '#ff5400' : '#ffb703';
+      this.size = Math.random() * 5 + 2;
+    } else if (type === 'ice') {
+      this.vx = (Math.random() - 0.5) * 2;
+      this.vy = -Math.random() * 2;
+      this.color = '#a0e7e5';
+      this.size = Math.random() * 4 + 2;
+    } else if (type === 'acid') {
+      this.vx = (Math.random() - 0.5) * 2;
+      this.vy = -Math.random() * 2;
+      this.color = '#70e000';
+      this.size = Math.random() * 4 + 2;
+    }
+  }
+
+  update(dt) {
+    this.x += this.vx * 60 * dt;
+    this.y += this.vy * 60 * dt;
+    if (this.type === 'blood' || this.type === 'bone') {
+      this.vy += 0.25 * 60 * dt;
+    }
+    this.life -= this.decay * dt;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+class GroundHazard {
+  constructor(x, y, type = 'fire', duration = 4.0, damage = 12) {
+    this.x = x;
+    this.y = y;
+    this.type = type;
+    this.duration = duration;
+    this.radius = type === 'fire' ? 70 : 45;
+    this.damage = damage;
+    this.tickTimer = 0;
+  }
+
+  update(dt) {
+    this.duration -= dt;
+    this.tickTimer += dt;
+
+    if (Math.random() < 0.4) {
+      particles.push(new Particle(this.x + (Math.random() * this.radius * 2 - this.radius), this.y - 4, this.type === 'fire' ? 'fire' : 'acid'));
+    }
+
+    if (this.tickTimer >= 0.4) {
+      this.tickTimer = 0;
+      if (this.type === 'fire') {
+        for (let e of enemies) {
+          if (e && e.hp > 0 && Math.abs(e.x - this.x) <= this.radius) {
+            e.takeDamage(this.damage, false, 0);
+          }
+        }
+      } else if (this.type === 'acid') {
+        for (let a of allies) {
+          if (a && a.hp > 0 && Math.abs(a.x - this.x) <= this.radius) {
+            a.takeDamage(this.damage);
+          }
+        }
+        if (samurai && samurai.hp > 0 && Math.abs(samurai.x - this.x) <= this.radius) {
+          samurai.takeDamage(this.damage);
+        }
+      }
+    }
+
+    return this.duration <= 0;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.type === 'fire') {
+      const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, this.radius);
+      grad.addColorStop(0, 'rgba(255, 100, 0, 0.85)');
+      grad.addColorStop(0.6, 'rgba(255, 180, 0, 0.4)');
+      grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.radius, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, this.radius);
+      grad.addColorStop(0, 'rgba(112, 224, 0, 0.85)');
+      grad.addColorStop(0.7, 'rgba(56, 176, 0, 0.4)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.radius, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+class LootDrop {
+  constructor(x, y, type = 'gold', value = 12) {
+    this.x = x;
+    this.y = y;
+    this.targetY = GROUND_Y - 8;
+    this.type = type;
+    this.value = value;
+    this.vx = (Math.random() - 0.5) * 3;
+    this.vy = -Math.random() * 4 - 3;
+    this.rot = 0;
+    this.life = 25.0;
+  }
+
+  update(dt, player) {
+    this.rot += dt * 6;
+    if (this.y < this.targetY) {
+      this.x += this.vx * 60 * dt;
+      this.y += this.vy * 60 * dt;
+      this.vy += 0.3 * 60 * dt;
+    } else {
+      this.y = this.targetY;
+      this.vx *= 0.85;
+    }
+
+    const dx = player.x - this.x;
+    const dy = (player.y - 30) - this.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 160) {
+      this.x += (dx / Math.max(1, dist)) * 12 * 60 * dt;
+      this.y += (dy / Math.max(1, dist)) * 12 * 60 * dt;
+      if (dist < 32) {
+        if (this.type === 'gold') {
+          state.gold += this.value;
+          audio.playCoin();
+          floatingTexts.push(new FloatingText(this.x, this.y, `+${this.value} 🪙`, '#f5c542', 14));
+        } else {
+          state.gems += this.value;
+          audio.playCoin();
+          floatingTexts.push(new FloatingText(this.x, this.y, `+${this.value} 💎`, '#4cc9f0', 16, true));
+        }
+        return true;
+      }
+    }
+
+    this.life -= dt;
+    return this.life <= 0;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    if (this.type === 'gold') {
+      ctx.fillStyle = '#f5c542';
+      ctx.strokeStyle = '#b8860b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 7 * Math.abs(Math.cos(this.rot)), 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#4cc9f0';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, -9);
+      ctx.lineTo(7, 0);
+      ctx.lineTo(0, 9);
+      ctx.lineTo(-7, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+// Projectiles with Bulletproof NaN protection
+class Projectile {
+  constructor(x, y, vx, vy, damage, isPlayer, type = 'arrow', isFiery = false) {
+    this.x = x;
+    this.y = y;
+    this.vx = isNaN(vx) ? (isPlayer ? 8 : -8) : vx;
+    this.vy = isNaN(vy) ? -4 : vy;
+    this.damage = damage || 20;
+    this.isPlayer = isPlayer;
+    this.type = type;
+    this.isFiery = isFiery;
+    this.stuck = false;
+    this.stuckTarget = null;
+    this.stuckOffsetX = 0;
+    this.stuckOffsetY = 0;
+    this.angle = Math.atan2(this.vy, this.vx);
+    this.life = 6.0;
+  }
+
+  update(dt, targets) {
+    if (this.stuck) {
+      if (this.stuckTarget && this.stuckTarget.hp > 0) {
+        this.x = this.stuckTarget.x + this.stuckOffsetX;
+        this.y = this.stuckTarget.y + this.stuckOffsetY;
+      }
+      this.life -= dt;
+      return this.life <= 0;
+    }
+
+    this.x += this.vx * 60 * dt;
+    this.y += this.vy * 60 * dt;
+    this.vy += (this.type === 'hellfire' ? 0.05 : 0.22) * 60 * dt;
+    this.angle = Math.atan2(this.vy, this.vx);
+
+    if (this.isFiery) {
+      particles.push(new Particle(this.x, this.y, 'fire'));
+    }
+
+    if (this.y >= GROUND_Y - 2) {
+      this.y = GROUND_Y - 2;
+      this.stuck = true;
+
+      if (this.type === 'acid_ball') {
+        groundHazards.push(new GroundHazard(this.x, GROUND_Y, 'acid', 4.5, 8));
+        return true;
+      }
+      if (this.isFiery) {
+        groundHazards.push(new GroundHazard(this.x, GROUND_Y, 'fire', 3.0, 14));
+      }
+
+      audio.playArrowHit();
+      return false;
+    }
+
+    for (let target of targets) {
+      if (!target || target.hp <= 0) continue;
+      const w = target.width || 40;
+      const h = target.height || 70;
+      if (
+        this.x >= target.x - w / 2 &&
+        this.x <= target.x + w / 2 &&
+        this.y >= target.y - h &&
+        this.y <= target.y
+      ) {
+        const isCrit = this.isPlayer && Math.random() < (samurai.critChance + state.blessings.critChance);
+        let finalDmg = isCrit ? this.damage * 2 : this.damage;
+
+        target.takeDamage(finalDmg, isCrit, this.vx > 0 ? 1 : -1);
+        audio.playArrowHit();
+
+        if (this.type === 'acid_ball') {
+          groundHazards.push(new GroundHazard(this.x, GROUND_Y, 'acid', 4.5, 8));
+          return true;
+        }
+
+        this.stuck = true;
+        this.stuckTarget = target;
+        this.stuckOffsetX = this.x - target.x;
+        this.stuckOffsetY = this.y - target.y;
+        return false;
+      }
+    }
+
+    return this.x < -100 || this.x > WORLD_WIDTH + 100;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+
+    if (this.type === 'acid_ball') {
+      ctx.fillStyle = '#70e000';
+      ctx.shadowColor = '#38b000';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (this.type === 'hellfire') {
+      ctx.fillStyle = '#b5179e';
+      ctx.shadowColor = '#7209b7';
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(0, 0, 9, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.rotate(this.angle);
+      ctx.strokeStyle = this.isFiery ? '#ff5400' : (this.isPlayer ? '#e8dcc4' : '#7209b7');
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-18, 0);
+      ctx.lineTo(10, 0);
+      ctx.stroke();
+
+      ctx.fillStyle = this.isFiery ? '#ffb703' : (this.isPlayer ? '#f8f9fa' : '#f72585');
+      ctx.beginPath();
+      ctx.moveTo(12, 0);
+      ctx.lineTo(6, -4);
+      ctx.lineTo(6, 4);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = this.isPlayer ? '#e63946' : '#4a0e4e';
+      ctx.fillRect(-18, -3, 6, 6);
+    }
+    ctx.restore();
+  }
+}
+
+// =============================================================================
+// THE SAMURAI HERO CLASS
+// =============================================================================
+class SamuraiHero {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.x = 280;
+    this.y = GROUND_Y;
+    this.vx = 0;
+    this.facing = 1;
+    this.width = 44;
+    this.height = 76;
+
+    this.maxHp = 200;
+    this.hp = 200;
+    this.hpLag = 200;
+    this.hpRegen = 1.0;
+    this.meleeDmg = 45;
+    this.rangedDmg = 35;
+    this.bowRange = 480;
+    this.critChance = 0.15;
+    this.speed = 4.5;
+
+    this.combatMode = 'IDLE';
+    this.meleeStage = 0;
+    this.meleeTimer = 0;
+    this.meleeCooldown = 0.42;
+    this.bowTimer = 0;
+    this.bowCooldown = 1.05;
+
+    this.isRolling = false;
+    this.rollTimer = 0;
+    this.invulnerable = false;
+
+    this.animTime = 0;
+    this.slashProgress = 0;
+    this.surgeDistance = 0;
+  }
+
+  applyUpgrades() {
+    const u = state.upgrades;
+    const b = state.blessings;
+
+    this.meleeDmg = 45 + (u.katana.lvl - 1) * 14;
+    this.critChance = 0.15 + (u.katana.lvl - 1) * 0.03 + b.critChance;
+    this.rangedDmg = 35 + (u.bow.lvl - 1) * 9;
+    this.bowRange = 480 + (u.bow.lvl - 1) * 35;
+
+    const baseMaxHp = 200 + (u.armor.lvl - 1) * 45;
+    this.maxHp = Math.round(baseMaxHp * (1 + b.maxHp));
+    this.hpRegen = 1.0 + (u.armor.lvl - 1) * 1.6;
+    this.speed = 4.5 * (1 + b.moveSpeed);
+    this.hp = Math.min(this.hp, this.maxHp);
+  }
+
+  update(dt) {
+    this.animTime += dt;
+
+    if (this.hp < this.maxHp && this.hp > 0) {
+      this.hp = Math.min(this.maxHp, this.hp + this.hpRegen * dt);
+    }
+    if (this.hpLag > this.hp) {
+      this.hpLag -= (this.hpLag - this.hp) * 8 * dt;
+    }
+
+    if (this.meleeTimer > 0) this.meleeTimer -= dt;
+    if (this.bowTimer > 0) this.bowTimer -= dt;
+
+    if (this.isRolling) {
+      this.rollTimer -= dt;
+      this.x += this.facing * 12 * 60 * dt;
+      this.invulnerable = true;
+
+      if (Math.random() < 0.6) {
+        particles.push(new Particle(this.x, this.y - 20, 'slashArc'));
+      }
+
+      if (this.rollTimer <= 0) {
+        this.isRolling = false;
+        this.invulnerable = false;
+        this.combatMode = 'IDLE';
+      }
+      return;
+    }
+
+    if (this.combatMode === 'SURGE') {
+      const dashSpeed = 1200 * dt;
+      this.x += dashSpeed;
+      this.surgeDistance += dashSpeed;
+      this.invulnerable = true;
+
+      for (let enemy of enemies) {
+        if (enemy.hp > 0 && Math.abs(enemy.x - this.x) < 55 && !enemy.surgeHit) {
+          enemy.surgeHit = true;
+          enemy.takeDamage(this.meleeDmg * 3.0, true, 1);
+          audio.playSlash(true);
+        }
+      }
+
+      if (this.surgeDistance >= 320 || this.x >= WORLD_WIDTH - 60) {
+        this.combatMode = 'IDLE';
+        this.invulnerable = false;
+        enemies.forEach(e => e.surgeHit = false);
+      }
+      return;
+    }
+
+    let moveInput = 0;
+    if (state.keys['KeyA'] || state.keys['ArrowLeft'] || state.touchMoveLeft) moveInput -= 1;
+    if (state.keys['KeyD'] || state.keys['ArrowRight'] || state.touchMoveRight) moveInput += 1;
+
+    let nearestEnemy = null;
+    let nearestDist = Infinity;
+    for (let enemy of enemies) {
+      if (enemy.hp <= 0) continue;
+      const dist = enemy.x - this.x;
+      if (dist > 0 && dist < nearestDist) {
+        nearestDist = dist;
+        nearestEnemy = enemy;
+      }
+    }
+
+    let currentSpeed = this.speed;
+    if (moveInput < 0 && nearestEnemy) {
+      currentSpeed *= 0.8;
+    }
+
+    if (moveInput !== 0) {
+      this.vx += moveInput * currentSpeed * 0.25;
+      if (nearestEnemy && nearestDist <= this.bowRange) {
+        this.facing = 1;
+      } else {
+        this.facing = moveInput;
+      }
+    } else {
+      this.vx *= 0.78;
+    }
+
+    this.vx = Math.max(-currentSpeed, Math.min(currentSpeed, this.vx));
+    this.x += this.vx * 60 * dt;
+    this.x = Math.max(VILLAGE_GATE_X + 60, Math.min(DEMON_PORTAL_X - 100, this.x));
+
+    if (nearestEnemy && nearestDist <= 110) {
+      this.facing = 1;
+      this.combatMode = 'MELEE';
+      if (this.meleeTimer <= 0) {
+        this.performMeleeAttack(nearestEnemy);
+      }
+    } else if (nearestEnemy && nearestDist <= this.bowRange) {
+      this.facing = 1;
+      this.combatMode = 'RANGED';
+      if (this.bowTimer <= 0) {
+        this.performBowAttack(nearestEnemy, nearestDist);
+      }
+    } else {
+      this.combatMode = Math.abs(this.vx) > 0.4 ? 'RUN' : 'IDLE';
+    }
+  }
+
+  performMeleeAttack(target) {
+    this.meleeStage = (this.meleeStage % 3) + 1;
+    this.meleeTimer = this.meleeCooldown;
+    this.slashProgress = 1.0;
+
+    const isCrit = Math.random() < (this.critChance + state.blessings.critChance);
+    let dmg = this.meleeDmg * (this.meleeStage === 3 ? 1.6 : 1.0);
+    if (isCrit) dmg *= 2.0;
+
+    audio.playSlash(this.meleeStage === 3);
+
+    for (let e of enemies) {
+      if (e.hp > 0 && e.x > this.x && e.x - this.x <= 135) {
+        e.takeDamage(dmg, isCrit, 1);
+        for (let i = 0; i < 4; i++) particles.push(new Particle(e.x, e.y - 40, 'spark'));
+      }
+    }
+    state.screenShake = this.meleeStage === 3 ? 5 : 2;
+  }
+
+  performBowAttack(target, dist) {
+    this.bowTimer = this.bowCooldown;
+    audio.playBowTwang();
+
+    const safeDist = Math.max(40, dist);
+    const timeToTarget = Math.max(0.15, safeDist / 660);
+    const vx = safeDist / (timeToTarget * 60);
+    const vy = -3.5 - (safeDist / 140);
+
+    arrows.push(new Projectile(this.x + 20, this.y - 45, vx, vy, this.rangedDmg, true, 'arrow', false));
+  }
+
+  triggerFlashStep() {
+    if (state.upgrades.flashStep.lvl < 1 || this.isRolling) return;
+    this.isRolling = true;
+    this.rollTimer = 0.28;
+    audio.playSlash(false);
+  }
+
+  triggerKatanaDash() {
+    this.combatMode = 'SURGE';
+    this.surgeDistance = 0;
+    audio.playSlash(true);
+    state.screenShake = 6;
+  }
+
+  triggerArrowHail() {
+    audio.playBowTwang();
+    const startX = this.x + 80;
+    for (let i = 0; i < 20; i++) {
+      setTimeout(() => {
+        if (!state.battle.active) return;
+        const targetX = startX + Math.random() * 400;
+        arrows.push(new Projectile(targetX - 50, -40, 2 + Math.random() * 2, 10 + Math.random() * 4, this.rangedDmg * 1.5, true, 'arrow', true));
+      }, i * 65);
+    }
+  }
+
+  takeDamage(amount) {
+    if (this.invulnerable || this.hp <= 0 || !state.battle.active) return;
+    this.hp = Math.max(0, this.hp - amount);
+    floatingTexts.push(new FloatingText(this.x, this.y - 40, `-${Math.round(amount)}`, '#ff4d4d', 16));
+    audio.playArrowHit();
+
+    if (state.buffs.knockbackImmunity <= 0) {
+      state.screenShake = 3;
+    }
+
+    if (this.hp <= 0) {
+      this.hp = 0;
+      endBattle(false, 'Samurai Jin has fallen in battle!');
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(this.facing, 1);
+
+    const bob = Math.sin(this.animTime * 12) * (this.combatMode === 'RUN' ? 3 : 1);
+
+    if (this.hp < this.maxHp * 0.3) {
+      ctx.strokeStyle = Math.sin(this.animTime * 20) > 0 ? '#ff0054' : 'transparent';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-this.width / 2 - 4, -this.height - 4, this.width + 8, this.height + 8);
+    }
+
+    if (this.slashProgress > 0) {
+      this.slashProgress -= 0.15;
+      ctx.save();
+      ctx.strokeStyle = '#4cc9f0';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#64dfdf';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      if (this.meleeStage === 1) ctx.arc(20, -45 + bob, 55, -0.6, 1.2);
+      else if (this.meleeStage === 2) ctx.arc(20, -40 + bob, 55, 1.4, -0.8, true);
+      else ctx.arc(25, -45 + bob, 70, -1.2, 1.8);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.fillStyle = '#1c1917';
+    const legOffset = this.combatMode === 'RUN' ? Math.sin(this.animTime * 14) * 8 : 0;
+    ctx.fillRect(-12 - legOffset, -26 + bob, 10, 26);
+    ctx.fillRect(2 + legOffset, -26 + bob, 10, 26);
+
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(-14, -58 + bob, 28, 34);
+
+    ctx.fillStyle = '#f5c542';
+    ctx.fillRect(-12, -44 + bob, 24, 3);
+    ctx.fillRect(-16, -58 + bob, 5, 14);
+    ctx.fillRect(11, -58 + bob, 5, 14);
+
+    ctx.fillStyle = '#f8f9fa';
+    ctx.beginPath();
+    const coatDrift = -this.vx * 3 + Math.sin(this.animTime * 8) * 4;
+    ctx.moveTo(-14, -58 + bob);
+    ctx.lineTo(-24 + coatDrift, -22 + bob);
+    ctx.lineTo(-12, -26 + bob);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#1d3557';
+    ctx.fillRect(-14, -40 + bob, 28, 5);
+
+    ctx.fillStyle = '#e2d9cc';
+    ctx.fillRect(-8, -72 + bob, 16, 16);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-6, -64 + bob, 14, 8);
+
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.arc(0, -70 + bob, 13, Math.PI, 0);
+    ctx.fill();
+
+    ctx.fillStyle = '#f5c542';
+    ctx.beginPath();
+    ctx.arc(0, -78 + bob, 8, -Math.PI * 0.7, Math.PI * 0.7, true);
+    ctx.fill();
+
+    if (this.combatMode === 'RANGED') {
+      ctx.strokeStyle = '#854d0e';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(16, -45 + bob, 38, -0.9, 0.9);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(16 + Math.cos(-0.9) * 38, -45 + bob + Math.sin(-0.9) * 38);
+      ctx.lineTo(8, -45 + bob);
+      ctx.lineTo(16 + Math.cos(0.9) * 38, -45 + bob + Math.sin(0.9) * 38);
+      ctx.stroke();
+    } else {
+      ctx.save();
+      ctx.translate(10, -42 + bob);
+      ctx.rotate(this.slashProgress > 0 ? 0.8 : -0.4);
+      ctx.fillStyle = '#f5c542';
+      ctx.fillRect(-4, -2, 8, 4);
+      ctx.fillStyle = '#f1f5f9';
+      ctx.fillRect(4, -2, 42, 3);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+}
+
+const samurai = new SamuraiHero();
+
+// =============================================================================
+// FRIENDLY ALLIED UNITS
+// =============================================================================
+class Ally {
+  constructor(type, x = VILLAGE_GATE_X + 45) {
+    this.type = type;
+    this.x = x;
+    this.y = GROUND_Y;
+    this.hpLag = 0;
+    this.attackTimer = 0;
+    this.animTime = Math.random() * 10;
+    this.facing = 1;
+    this.shotCount = 0;
+    this.auraTimer = 0;
+
+    const u = state.upgrades;
+    if (type === 'peasant') {
+      this.name = 'Peasant Militia';
+      this.maxHp = 110 + (u.peasant.lvl - 1) * 30;
+      this.damage = 18 + (u.peasant.lvl - 1) * 6;
+      this.range = 50;
+      this.speed = 3.2;
+      this.attackCooldown = 0.9;
+      this.width = 34;
+      this.height = 60;
+    } else if (type === 'spearman') {
+      this.name = 'Yari Spearman';
+      this.maxHp = 220 + (u.spearman.lvl - 1) * 55;
+      this.damage = 32 + (u.spearman.lvl - 1) * 10;
+      this.range = 135;
+      this.speed = 2.4;
+      this.attackCooldown = 1.3;
+      this.width = 38;
+      this.height = 70;
+    } else if (type === 'bowman') {
+      this.name = 'Imperial Bowman';
+      this.maxHp = 140 + (u.bowman.lvl - 1) * 35;
+      this.damage = 28 + (u.bowman.lvl - 1) * 9;
+      this.range = 400;
+      this.speed = 2.1;
+      this.attackCooldown = 1.4;
+      this.width = 34;
+      this.height = 66;
+    } else if (type === 'guard') {
+      this.name = 'Daimyo Guard';
+      this.maxHp = 520 + (u.guard.lvl - 1) * 140;
+      this.damage = 55 + (u.guard.lvl - 1) * 18;
+      this.range = 80;
+      this.speed = 1.6;
+      this.attackCooldown = 1.6;
+      this.width = 48;
+      this.height = 84;
+    } else if (type === 'maiden') {
+      this.name = 'Shrine Maiden';
+      this.maxHp = 170 + (u.maiden.lvl - 1) * 40;
+      this.damage = 20;
+      this.range = 160;
+      this.speed = 2.2;
+      this.attackCooldown = 2.0;
+      this.width = 36;
+      this.height = 68;
+    }
+
+    this.hp = this.maxHp;
+    this.hpLag = this.hp;
+  }
+
+  update(dt) {
+    this.animTime += dt;
+    if (this.attackTimer > 0) this.attackTimer -= dt;
+
+    if (this.hpLag > this.hp) {
+      this.hpLag -= (this.hpLag - this.hp) * 8 * dt;
+    }
+
+    const speedMult = (state.buffs.warCry > 0 ? 1.5 : 1.0) * (1 + state.blessings.moveSpeed);
+    const dmgMult = state.buffs.warCry > 0 ? 1.4 : 1.0;
+
+    if (this.type === 'maiden') {
+      this.auraTimer += dt;
+      if (this.auraTimer >= 2.0) {
+        this.auraTimer = 0;
+        audio.playHeal();
+        for (let ally of allies) {
+          if (ally.hp > 0 && Math.abs(ally.x - this.x) <= 160) {
+            const healAmt = Math.round(ally.maxHp * 0.05);
+            ally.hp = Math.min(ally.maxHp, ally.hp + healAmt);
+            floatingTexts.push(new FloatingText(ally.x, ally.y - 40, `+${healAmt}`, '#2ec4b6', 13));
+          }
+        }
+        if (Math.abs(samurai.x - this.x) <= 160) {
+          const healAmt = Math.round(samurai.maxHp * 0.05);
+          samurai.hp = Math.min(samurai.maxHp, samurai.hp + healAmt);
+          floatingTexts.push(new FloatingText(samurai.x, samurai.y - 40, `+${healAmt}`, '#2ec4b6', 14));
+        }
+      }
+    }
+
+    let nearestEnemy = null;
+    let nearestDist = Infinity;
+    for (let enemy of enemies) {
+      if (enemy.hp <= 0) continue;
+      const d = enemy.x - this.x;
+      if (d > 0 && d < nearestDist) {
+        nearestDist = d;
+        nearestEnemy = enemy;
+      }
+    }
+
+    if (this.type === 'spearman') {
+      const nearbySpearmen = allies.filter(a => a.type === 'spearman' && Math.abs(a.x - this.x) <= 60).length;
+      this.spearWallActive = nearbySpearmen >= 3;
+    }
+
+    if (nearestEnemy && nearestDist <= this.range) {
+      if (this.attackTimer <= 0) {
+        this.performAttack(nearestEnemy, nearestDist, dmgMult);
+      }
+    } else {
+      this.x += this.speed * speedMult * 60 * dt;
+      this.x = Math.min(DEMON_PORTAL_X - 60, this.x);
+    }
+  }
+
+  performAttack(target, dist, dmgMult) {
+    this.attackTimer = this.attackCooldown;
+
+    if (this.type === 'peasant') {
+      audio.playSlash(false);
+      target.takeDamage(this.damage * dmgMult, false, 1);
+
+      if (Math.random() < 0.20 && !target.isBoss) {
+        target.fearTimer = 1.5;
+        floatingTexts.push(new FloatingText(target.x, target.y - 50, 'FEARED!', '#f5c542', 14, true));
+      }
+    } else if (this.type === 'spearman') {
+      audio.playSlash(false);
+      const knock = this.spearWallActive ? 2 : 1;
+      target.takeDamage(this.damage * dmgMult * (this.spearWallActive ? 1.2 : 1.0), false, knock);
+    } else if (this.type === 'bowman') {
+      audio.playBowTwang();
+      this.shotCount++;
+      const isFireShot = this.shotCount % 4 === 0;
+
+      const safeDist = Math.max(40, dist);
+      const timeToTarget = Math.max(0.15, safeDist / 620);
+      const vx = safeDist / (timeToTarget * 60);
+      const vy = -3.2 - (safeDist / 160);
+      arrows.push(new Projectile(this.x + 15, this.y - 40, vx, vy, this.damage * dmgMult, true, 'arrow', isFireShot));
+    } else if (this.type === 'guard') {
+      audio.playSlash(true);
+      for (let e of enemies) {
+        if (e.hp > 0 && Math.abs(e.x - this.x) <= this.range + 30) {
+          e.takeDamage(this.damage * dmgMult, false, 1);
+          e.tauntTarget = this;
+        }
+      }
+    } else if (this.type === 'maiden') {
+      audio.playHeal();
+      target.takeDamage(this.damage * dmgMult, false, 0);
+    }
+  }
+
+  takeDamage(amount) {
+    let finalAmt = amount;
+    if (this.spearWallActive) finalAmt *= 0.6;
+    this.hp = Math.max(0, this.hp - finalAmt);
+    floatingTexts.push(new FloatingText(this.x, this.y - 45, `-${Math.round(finalAmt)}`, '#ff9999', 13));
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const bob = Math.sin(this.animTime * 10) * 2;
+
+    if (state.buffs.warCry > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#ffd700';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 10;
+      ctx.strokeRect(-this.width / 2 - 2, -this.height - 4, this.width + 4, this.height + 6);
+      ctx.restore();
+    }
+
+    if (this.type === 'peasant') {
+      ctx.fillStyle = '#6b5e48';
+      ctx.fillRect(-9, -46 + bob, 18, 46);
+      ctx.fillStyle = '#c2a649';
+      ctx.beginPath();
+      ctx.moveTo(-16, -48 + bob); ctx.lineTo(0, -60 + bob); ctx.lineTo(16, -48 + bob); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#8b5a2b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-2, -18); ctx.lineTo(24, -42 + bob); ctx.stroke();
+    } else if (this.type === 'spearman') {
+      ctx.fillStyle = '#2ec4b6';
+      ctx.fillRect(-11, -54 + bob, 22, 54);
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.moveTo(-16, -56 + bob); ctx.lineTo(0, -66 + bob); ctx.lineTo(16, -56 + bob); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(-18, -100 + bob, 10, 48);
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-18, -100 + bob, 10, 48);
+      ctx.strokeStyle = '#8d99ae';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-6, -30 + bob); ctx.lineTo(44, -30 + bob); ctx.stroke();
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(36, -33 + bob, 6, 6);
+    } else if (this.type === 'bowman') {
+      ctx.fillStyle = '#2d6a4f';
+      ctx.fillRect(-10, -52 + bob, 20, 52);
+      ctx.fillStyle = '#1b4332';
+      ctx.beginPath();
+      ctx.arc(0, -58 + bob, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#d4a373';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(12, -35 + bob, 24, -0.8, 0.8);
+      ctx.stroke();
+    } else if (this.type === 'guard') {
+      ctx.fillStyle = '#0f0c15';
+      ctx.fillRect(-18, -74 + bob, 36, 74);
+      ctx.fillStyle = '#f5c542';
+      ctx.fillRect(-22, -72 + bob, 8, 18);
+      ctx.fillRect(14, -72 + bob, 8, 18);
+      ctx.fillStyle = '#333';
+      ctx.fillRect(-8, -80 + bob, 16, 12);
+      ctx.fillStyle = '#f1faee';
+      ctx.fillRect(14, -68 + bob, 46, 7);
+    } else if (this.type === 'maiden') {
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(-10, -56 + bob, 20, 30);
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(-12, -26 + bob, 24, 26);
+      ctx.strokeStyle = '#c2a649';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(10, 0); ctx.lineTo(10, -60 + bob); ctx.stroke();
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.arc(10, -62 + bob, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 215, 0, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 160, 25, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    drawUnitHealthBar(ctx, 0, -this.height - 12, this.hp, this.hpLag, this.maxHp, '#2ec4b6');
+    ctx.restore();
+  }
+}
+
+// =============================================================================
+// UNDEAD & DEMON HORDE (6 MONSTER ARCHETYPES)
+// =============================================================================
+class Enemy {
+  constructor(type, waveMultiplier = 1) {
+    this.type = type;
+    this.x = DEMON_PORTAL_X;
+    this.y = GROUND_Y;
+    this.hpLag = 0;
+    this.attackTimer = 0;
+    this.animTime = Math.random() * 10;
+    this.facing = -1;
+    this.fearTimer = 0;
+    this.tauntTarget = null;
+    this.surgeHit = false;
+    this.isBoss = false;
+
+    if (type === 'peasant') {
+      this.name = 'Rotting Ashigaru';
+      this.maxHp = Math.round(90 * waveMultiplier);
+      this.damage = Math.round(15 * waveMultiplier);
+      this.range = 45;
+      this.speed = 1.4;
+      this.attackCooldown = 1.2;
+      this.width = 34;
+      this.height = 64;
+      this.coinDrop = 15;
+      this.gemDropChance = 0.08;
+    } else if (type === 'ninja') {
+      this.name = 'Cursed Shadow Ninja';
+      this.maxHp = Math.round(130 * waveMultiplier);
+      this.damage = Math.round(26 * waveMultiplier);
+      this.range = 55;
+      this.speed = 3.2;
+      this.attackCooldown = 0.9;
+      this.width = 32;
+      this.height = 62;
+      this.dodgeChance = 0.35;
+      this.coinDrop = 25;
+      this.gemDropChance = 0.20;
+    } else if (type === 'spitter') {
+      this.name = 'Blight Spitter';
+      this.maxHp = Math.round(160 * waveMultiplier);
+      this.damage = Math.round(20 * waveMultiplier);
+      this.range = 380;
+      this.speed = 1.3;
+      this.attackCooldown = 2.4;
+      this.width = 44;
+      this.height = 70;
+      this.coinDrop = 30;
+      this.gemDropChance = 0.22;
+    } else if (type === 'skeletal_samurai') {
+      this.name = 'Skeletal Samurai';
+      this.maxHp = Math.round(260 * waveMultiplier);
+      this.damage = Math.round(38 * waveMultiplier);
+      this.range = 65;
+      this.speed = 1.8;
+      this.attackCooldown = 1.3;
+      this.width = 40;
+      this.height = 74;
+      this.blockChance = 0.25;
+      this.coinDrop = 40;
+      this.gemDropChance = 0.28;
+    } else if (type === 'oni_warlord') {
+      this.name = 'Red Oni Warlord';
+      this.isBoss = true;
+      this.maxHp = Math.round(2000 * waveMultiplier);
+      this.damage = Math.round(80 * waveMultiplier);
+      this.range = 100;
+      this.speed = 1.1;
+      this.attackCooldown = 2.3;
+      this.width = 80;
+      this.height = 145;
+      this.coinDrop = 250;
+      this.gemDropChance = 1.0;
+      showBossBar('👹 RED ONI WARLORD', this);
+    } else if (type === 'corrupted_kyubi') {
+      this.name = 'Corrupted Kyubi';
+      this.isBoss = true;
+      this.maxHp = Math.round(3500 * waveMultiplier);
+      this.damage = Math.round(95 * waveMultiplier);
+      this.range = 380;
+      this.speed = 0.9;
+      this.attackCooldown = 2.0;
+      this.width = 90;
+      this.height = 140;
+      this.coinDrop = 500;
+      this.gemDropChance = 1.0;
+      showBossBar('🦊 CORRUPTED KYUBI - NINE-TAILED DEMON', this);
+    }
+
+    this.hp = this.maxHp;
+    this.hpLag = this.hp;
+  }
+
+  update(dt) {
+    if (state.buffs.timeFreeze > 0) return;
+
+    this.animTime += dt;
+    if (this.attackTimer > 0) this.attackTimer -= dt;
+    if (this.fearTimer > 0) {
+      this.fearTimer -= dt;
+      this.x += 2.0 * 60 * dt;
+      this.x = Math.min(DEMON_PORTAL_X, this.x);
+      return;
+    }
+
+    if (this.hpLag > this.hp) {
+      this.hpLag -= (this.hpLag - this.hp) * 8 * dt;
+    }
+
+    if (this.tauntTarget && this.tauntTarget.hp <= 0) {
+      this.tauntTarget = null;
+    }
+
+    let target = this.tauntTarget && this.tauntTarget.hp > 0 ? this.tauntTarget : null;
+    let nearestDist = Infinity;
+
+    if (!target) {
+      for (let ally of allies) {
+        if (!ally || ally.hp <= 0) continue;
+        const d = this.x - ally.x;
+        if (d > 0 && d < nearestDist) {
+          nearestDist = d;
+          target = ally;
+        }
+      }
+      if (samurai && samurai.hp > 0) {
+        const d = this.x - samurai.x;
+        if (d > 0 && d < nearestDist) {
+          nearestDist = d;
+          target = samurai;
+        }
+      }
+      const distToGate = this.x - VILLAGE_GATE_X;
+      if (distToGate > 0 && distToGate < nearestDist) {
+        nearestDist = distToGate;
+        target = 'GATE';
+      }
+    } else {
+      nearestDist = Math.max(10, this.x - target.x);
+    }
+
+    if (target && nearestDist <= this.range) {
+      if (this.attackTimer <= 0) {
+        this.performAttack(target, nearestDist);
+      }
+    } else {
+      this.x -= this.speed * 60 * dt;
+      this.x = Math.max(VILLAGE_GATE_X, this.x);
+    }
+  }
+
+  performAttack(target, dist) {
+    this.attackTimer = this.attackCooldown;
+
+    if (this.type === 'spitter') {
+      audio.playBowTwang();
+      const safeDist = Math.max(40, dist);
+      const timeToTarget = Math.max(0.15, safeDist / 500);
+      const vx = -(safeDist / (timeToTarget * 60));
+      const vy = -3.2 - (safeDist / 160);
+      arrows.push(new Projectile(this.x - 15, this.y - 45, vx, vy, this.damage, false, 'acid_ball', false));
+    } else if (this.type === 'corrupted_kyubi') {
+      audio.playExplosion();
+      const safeDist = Math.max(40, dist);
+      const timeToTarget = Math.max(0.15, safeDist / 480);
+      const vx = -(safeDist / (timeToTarget * 60));
+      const vy = -2.5;
+      arrows.push(new Projectile(this.x - 20, this.y - 60, vx, vy, this.damage, false, 'hellfire', true));
+    } else if (this.type === 'oni_warlord') {
+      audio.playExplosion();
+      state.screenShake = 12;
+
+      for (let i = 0; i < 14; i++) particles.push(new Particle(this.x - 50, GROUND_Y, 'bone'));
+
+      if (target === 'GATE') damageVillageGate(this.damage * 1.5);
+      else if (target && target.takeDamage) target.takeDamage(this.damage);
+
+      for (let ally of allies) {
+        if (ally !== target && Math.abs(ally.x - this.x) <= 180) ally.takeDamage(this.damage * 0.5);
+      }
+      if (samurai !== target && Math.abs(samurai.x - this.x) <= 180) samurai.takeDamage(this.damage * 0.5);
+    } else {
+      audio.playSlash(false);
+      if (target === 'GATE') damageVillageGate(this.damage);
+      else if (target && target.takeDamage) target.takeDamage(this.damage);
+    }
+  }
+
+  takeDamage(amount, isCrit = false, knockbackDir = 1) {
+    if (this.dodgeChance && Math.random() < this.dodgeChance) {
+      audio.playParry();
+      for (let i = 0; i < 6; i++) particles.push(new Particle(this.x, this.y - 30, 'darkSmoke'));
+      this.x += (Math.random() > 0.5 ? 45 : -35);
+      floatingTexts.push(new FloatingText(this.x, this.y - 45, 'EVADED!', '#4cc9f0', 13));
+      return;
+    }
+
+    if (this.blockChance && Math.random() < this.blockChance) {
+      audio.playParry();
+      floatingTexts.push(new FloatingText(this.x, this.y - 45, 'BLOCKED!', '#64dfdf', 13));
+      for (let i = 0; i < 3; i++) particles.push(new Particle(this.x, this.y - 40, 'spark'));
+      return;
+    }
+
+    this.hp = Math.max(0, this.hp - amount);
+    floatingTexts.push(new FloatingText(this.x, this.y - 45, `${isCrit ? '💥 ' : ''}-${Math.round(amount)}`, isCrit ? '#ffd166' : '#fff', isCrit ? 19 : 14, isCrit));
+
+    for (let i = 0; i < (isCrit ? 8 : 4); i++) {
+      particles.push(new Particle(this.x, this.y - 35, this.type === 'skeletal_samurai' ? 'bone' : 'blood'));
+    }
+
+    if (!this.isBoss) {
+      this.x += knockbackDir * (isCrit ? 18 : 8);
+      this.x = Math.min(DEMON_PORTAL_X, this.x);
+    }
+
+    if (this.hp <= 0) {
+      this.onKilled();
+    }
+  }
+
+  onKilled() {
+    lootDrops.push(new LootDrop(this.x, this.y - 20, 'gold', this.coinDrop));
+    if (Math.random() < this.gemDropChance) {
+      lootDrops.push(new LootDrop(this.x, this.y - 25, 'gem', this.isBoss ? 6 : 1));
+    }
+
+    if (this.isBoss) {
+      state.battle.bossActive = false;
+      state.battle.activeBoss = null;
+      document.getElementById('boss-bar-container').style.display = 'none';
+      floatingTexts.push(new FloatingText(this.x, this.y - 80, 'BOSS VANQUISHED!', '#f5c542', 26, true));
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    const bob = Math.sin(this.animTime * 8) * 2;
+
+    if (state.buffs.timeFreeze > 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(160, 231, 229, 0.45)';
+      ctx.strokeStyle = '#a0e7e5';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-this.width / 2 - 4, -this.height - 4, this.width + 8, this.height + 8);
+      ctx.fillRect(-this.width / 2 - 4, -this.height - 4, this.width + 8, this.height + 8);
+      ctx.restore();
+    }
+
+    if (this.type === 'peasant') {
+      ctx.fillStyle = '#4a5759';
+      ctx.fillRect(-10, -48 + bob, 20, 48);
+      ctx.fillStyle = '#70e000';
+      ctx.beginPath();
+      ctx.arc(0, -56 + bob, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffee32';
+      ctx.fillRect(-6, -58 + bob, 3, 3);
+      ctx.fillRect(1, -58 + bob, 3, 3);
+    } else if (this.type === 'ninja') {
+      ctx.fillStyle = '#0f0c15';
+      ctx.fillRect(-10, -54 + bob, 20, 54);
+      ctx.fillStyle = '#4cc9f0';
+      ctx.fillRect(-6, -58 + bob, 3, 2);
+      ctx.fillRect(2, -58 + bob, 3, 2);
+      ctx.fillStyle = '#b5179e';
+      ctx.fillRect(-20, -32 + bob, 14, 4);
+      ctx.fillRect(8, -32 + bob, 14, 4);
+    } else if (this.type === 'spitter') {
+      ctx.fillStyle = '#52006a';
+      ctx.beginPath();
+      ctx.ellipse(0, -38 + bob, 22, 34, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#7f5539';
+      ctx.fillRect(-28, -48 + bob, 26, 12);
+      ctx.fillStyle = '#70e000';
+      ctx.fillRect(-32, -45 + bob, 6, 6);
+    } else if (this.type === 'skeletal_samurai') {
+      ctx.fillStyle = '#582f0e';
+      ctx.fillRect(-12, -58 + bob, 24, 58);
+      ctx.fillStyle = '#f8f9fa';
+      for (let r = 0; r < 4; r++) {
+        ctx.fillRect(-8, -50 + bob + r * 6, 16, 2.5);
+      }
+      ctx.beginPath();
+      ctx.arc(0, -64 + bob, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#9d4edd';
+      ctx.fillRect(-42, -28 + bob, 38, 4);
+    } else if (this.type === 'oni_warlord') {
+      ctx.fillStyle = '#890620';
+      ctx.fillRect(-36, -120 + bob, 72, 120);
+      ctx.fillStyle = '#e36414';
+      ctx.fillRect(-38, -50 + bob, 76, 26);
+      ctx.fillStyle = '#b7094c';
+      ctx.beginPath();
+      ctx.arc(0, -130 + bob, 26, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff3b0';
+      ctx.beginPath();
+      ctx.moveTo(-18, -140 + bob); ctx.lineTo(-32, -170 + bob); ctx.lineTo(-8, -150 + bob); ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(18, -140 + bob); ctx.lineTo(32, -170 + bob); ctx.lineTo(8, -150 + bob); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#1b1b1e';
+      ctx.fillRect(-64, -145 + bob, 18, 125);
+    } else if (this.type === 'corrupted_kyubi') {
+      const floatY = bob + Math.sin(this.animTime * 4) * 8;
+      ctx.fillStyle = '#3a0ca3';
+      ctx.beginPath();
+      ctx.ellipse(0, -75 + floatY, 32, 45, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      for (let t = -4; t <= 4; t++) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(181, 23, 158, 0.7)';
+        ctx.beginPath();
+        const tailAngle = (t * 0.22) + Math.sin(this.animTime * 6 + t) * 0.1;
+        ctx.translate(20, -75 + floatY);
+        ctx.rotate(tailAngle);
+        ctx.ellipse(45, 0, 40, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.fillStyle = '#7209b7';
+      ctx.beginPath();
+      ctx.arc(-18, -95 + floatY, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f72585';
+      ctx.fillRect(-26, -98 + floatY, 5, 4);
+    }
+
+    if (!this.isBoss) {
+      drawUnitHealthBar(ctx, 0, -this.height - 12, this.hp, this.hpLag, this.maxHp, '#e63946');
+    }
+    ctx.restore();
+  }
+}
+
+function showBossBar(name, bossObj) {
+  state.battle.bossActive = true;
+  state.battle.activeBoss = bossObj;
+  document.getElementById('boss-name-label').innerText = name;
+  document.getElementById('boss-bar-container').style.display = 'flex';
+}
+
+function drawUnitHealthBar(ctx, x, y, hp, hpLag, maxHp, color) {
+  const width = 36;
+  const height = 5;
+  const fillPct = Math.max(0, hp / maxHp);
+  const lagPct = Math.max(0, hpLag / maxHp);
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(x - width / 2, y, width, height);
+
+  ctx.fillStyle = '#ffb3ba';
+  ctx.fillRect(x - width / 2, y, width * lagPct, height);
+
+  ctx.fillStyle = color;
+  ctx.fillRect(x - width / 2, y, width * fillPct, height);
+
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - width / 2, y, width, height);
+}
+
+function damageVillageGate(damage) {
+  if (!state.battle.active) return;
+  state.battle.gateHp = Math.max(0, state.battle.gateHp - damage);
+  state.screenShake = 5;
+  audio.playArrowHit();
+
+  if (state.battle.gateHp <= 0) {
+    state.battle.gateHp = 0;
+    endBattle(false, 'The Sacred Village Gate has been breached by the demon army!');
+  }
+}
+
+// =============================================================================
+// PARALLAX WORLD RENDERING
+// =============================================================================
+const sakuraPetals = [];
+for (let i = 0; i < 45; i++) {
+  sakuraPetals.push({
+    x: Math.random() * WORLD_WIDTH,
+    y: Math.random() * WORLD_HEIGHT,
+    speedX: Math.random() * 1.5 + 1.0,
+    speedY: Math.random() * 0.8 + 0.6,
+    size: Math.random() * 4 + 3,
+    rot: Math.random() * Math.PI * 2
+  });
+}
+
+function renderBattleWorld(ctx) {
+  const camX = state.cameraX;
+
+  const sky = ctx.createLinearGradient(0, 0, 0, WORLD_HEIGHT);
+  sky.addColorStop(0, '#0c0714');
+  sky.addColorStop(0.4, '#1b1026');
+  sky.addColorStop(0.75, '#4a1525');
+  sky.addColorStop(1, '#80262b');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 1280, 720);
+
+  const moonX = 850 - camX * 0.03;
+  ctx.save();
+  ctx.fillStyle = 'rgba(255, 248, 220, 0.9)';
+  ctx.shadowColor = 'rgba(255, 235, 170, 0.8)';
+  ctx.shadowBlur = 35;
+  ctx.beginPath();
+  ctx.arc(moonX, 150, 65, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(240, 210, 230, 0.15)';
+  const ct = Date.now() * 0.0004;
+  for (let ci = 0; ci < 6; ci++) {
+    const cx = ((ci * 350 + ct * 50) % 1580) - 150 - camX * 0.05;
+    const cy = 100 + (ci % 3) * 60;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 90, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.save();
+  const fujiX = 600 - camX * 0.08;
+  ctx.fillStyle = '#1c1322';
+  ctx.beginPath();
+  ctx.moveTo(fujiX - 450, GROUND_Y);
+  ctx.lineTo(fujiX - 90, 220);
+  ctx.lineTo(fujiX + 90, 220);
+  ctx.lineTo(fujiX + 450, GROUND_Y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(240, 240, 255, 0.7)';
+  ctx.beginPath();
+  ctx.moveTo(fujiX - 90, 220);
+  ctx.lineTo(fujiX + 90, 220);
+  ctx.lineTo(fujiX + 130, 275);
+  ctx.lineTo(fujiX + 40, 260);
+  ctx.lineTo(fujiX, 280);
+  ctx.lineTo(fujiX - 40, 260);
+  ctx.lineTo(fujiX - 130, 275);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  const midOffset = -camX * 0.35;
+  for (let i = 0; i < 4; i++) drawPagoda(ctx, 350 + i * 900 + midOffset, GROUND_Y);
+  for (let i = 0; i < 5; i++) drawToriiGate(ctx, 750 + i * 800 + midOffset, GROUND_Y, 0.65);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(-camX, 0);
+
+  ctx.fillStyle = '#2b1e16';
+  ctx.fillRect(0, GROUND_Y, WORLD_WIDTH, WORLD_HEIGHT - GROUND_Y);
+  ctx.fillStyle = '#2d4a22';
+  ctx.fillRect(0, GROUND_Y, WORLD_WIDTH, 14);
+
+  drawSacredVillageGate(ctx, VILLAGE_GATE_X, GROUND_Y);
+  drawDemonPortal(ctx, DEMON_PORTAL_X, GROUND_Y);
+
+  for (let lx = 260, idx = 0; lx < DEMON_PORTAL_X - 150; lx += 240, idx++) {
+    if (idx % 2 === 0) drawStoneLantern(ctx, lx, GROUND_Y);
+    else drawFireBrazier(ctx, lx, GROUND_Y);
+  }
+
+  for (let h of groundHazards) h.draw(ctx);
+  for (let ally of allies) ally.draw(ctx);
+  samurai.draw(ctx);
+  for (let enemy of enemies) enemy.draw(ctx);
+  for (let a of arrows) a.draw(ctx);
+  for (let l of lootDrops) l.draw(ctx);
+  for (let p of particles) p.draw(ctx);
+  for (let ft of floatingTexts) ft.draw(ctx);
+
+  ctx.fillStyle = 'rgba(255, 183, 197, 0.85)';
+  for (let p of sakuraPetals) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.size, p.size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawPagoda(ctx, x, y) {
+  ctx.save();
+  ctx.fillStyle = '#1f1322';
+  ctx.fillRect(x - 25, y - 70, 50, 70);
+  ctx.fillRect(x - 45, y - 75, 90, 8);
+  ctx.fillRect(x - 20, y - 120, 40, 45);
+  ctx.fillRect(x - 38, y - 125, 76, 8);
+  ctx.fillRect(x - 15, y - 165, 30, 40);
+  ctx.fillRect(x - 30, y - 170, 60, 8);
+  ctx.fillRect(x - 2, y - 200, 4, 30);
+  ctx.restore();
+}
+
+function drawToriiGate(ctx, x, y, scale = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = '#b7094c';
+  ctx.fillRect(-35, -110, 8, 110);
+  ctx.fillRect(27, -110, 8, 110);
+  ctx.fillRect(-45, -85, 90, 7);
+  ctx.fillStyle = '#890620';
+  ctx.fillRect(-55, -115, 110, 10);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(-58, -120, 116, 5);
+  ctx.restore();
+}
+
+function drawSacredVillageGate(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#4a2810';
+  ctx.fillRect(-30, -180, 24, 180);
+  ctx.fillRect(30, -180, 24, 180);
+  ctx.fillStyle = '#6b3e1c';
+  ctx.fillRect(-45, -140, 114, 18);
+  ctx.fillRect(-55, -185, 134, 22);
+
+  ctx.fillStyle = '#264653';
+  ctx.beginPath();
+  ctx.moveTo(-75, -195);
+  ctx.lineTo(95, -195);
+  ctx.lineTo(80, -215);
+  ctx.lineTo(-60, -215);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#e9c46a';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.arc(12, -155, 36, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fff';
+  for (let s = -8; s <= 32; s += 16) ctx.fillRect(s, -135, 6, 18);
+
+  if (state.battle.gateArchers > 0) {
+    ctx.fillStyle = '#2a9d8f';
+    ctx.fillRect(0, -235, 16, 20);
+    ctx.fillStyle = '#e9c46a';
+    ctx.beginPath();
+    ctx.arc(8, -240, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawDemonPortal(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y - 80);
+  const t = Date.now() * 0.003;
+
+  const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 95);
+  grad.addColorStop(0, '#f72585');
+  grad.addColorStop(0.4, '#7209b7');
+  grad.addColorStop(0.8, '#3a0ca3');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 100, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#0f051d';
+  ctx.beginPath();
+  ctx.moveTo(-35, -90); ctx.lineTo(-10, -30); ctx.lineTo(-45, 10); ctx.lineTo(-15, 60); ctx.lineTo(-30, 90);
+  ctx.lineTo(25, 80); ctx.lineTo(10, 30); ctx.lineTo(40, -20); ctx.lineTo(15, -70); ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#4cc9f0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(Math.sin(t) * 20, -70);
+  ctx.lineTo(Math.cos(t * 1.5) * 30, 0);
+  ctx.lineTo(Math.sin(t * 2) * 25, 70);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawStoneLantern(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#495057';
+  ctx.fillRect(-10, -12, 20, 12);
+  ctx.fillRect(-5, -45, 10, 33);
+  ctx.fillStyle = '#212529';
+  ctx.fillRect(-12, -62, 24, 17);
+  ctx.fillStyle = '#ffb703';
+  ctx.fillRect(-7, -58, 14, 10);
+  ctx.fillStyle = '#343a40';
+  ctx.fillRect(-16, -67, 32, 5);
+  ctx.restore();
+}
+
+function drawFireBrazier(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  const t = Date.now() * 0.008;
+
+  ctx.strokeStyle = '#212529';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-16, 0); ctx.lineTo(-10, -32); ctx.lineTo(0, -36); ctx.lineTo(10, -32); ctx.lineTo(16, 0);
+  ctx.stroke();
+
+  ctx.fillStyle = '#1b1b1e';
+  ctx.beginPath();
+  ctx.arc(0, -38, 18, 0, Math.PI);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffb703';
+  ctx.beginPath();
+  ctx.moveTo(-12, -40);
+  ctx.quadraticCurveTo(-6 + Math.sin(t) * 4, -58, 0, -68 + Math.cos(t * 1.3) * 6);
+  ctx.quadraticCurveTo(6 + Math.cos(t) * 4, -58, 12, -40);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// =============================================================================
+// OVERWORLD MAP RENDERING & CONTINUOUS INTERACTION
+// =============================================================================
+let mapCanvas, mapCtx;
+let mapTime = 0;
+let activeLoopId = null;
+
+function cancelCurrentLoop() {
+  if (activeLoopId !== null) {
+    cancelAnimationFrame(activeLoopId);
+    activeLoopId = null;
+  }
+}
+
+function drawSafeRoundRect(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+}
+
+function drawKabutoHelmet(ctx, x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Floating 'YOU ARE HERE' banner / tag
+  ctx.fillStyle = 'rgba(15, 12, 21, 0.9)';
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  drawSafeRoundRect(ctx, -42, -42, 84, 18, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('HERO SQUAD', 0, -33);
+
+  // Down pointer
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.moveTo(-4, -24);
+  ctx.lineTo(4, -24);
+  ctx.lineTo(0, -19);
+  ctx.closePath();
+  ctx.fill();
+
+  // Helmet neck guard (Shikoro)
+  ctx.fillStyle = '#8b0000';
+  ctx.fillRect(-16, -10, 32, 6);
+  ctx.fillStyle = '#f5c542';
+  ctx.fillRect(-14, -8, 28, 2);
+
+  // Black lacquered dome (Hachi)
+  ctx.fillStyle = '#18181b';
+  ctx.beginPath();
+  ctx.arc(0, -10, 14, Math.PI, 0);
+  ctx.fill();
+
+  // Red cords (Shinobi-no-o)
+  ctx.strokeStyle = '#e63946';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-6, -4);
+  ctx.lineTo(0, 2);
+  ctx.lineTo(6, -4);
+  ctx.stroke();
+
+  // Golden Crescent Moon Crest (Maedate)
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(0, -20, 10, -Math.PI * 0.75, Math.PI * 0.75, true);
+  ctx.closePath();
+  ctx.fill();
+
+  // Iron faceplate (Menpo)
+  ctx.fillStyle = '#27272a';
+  ctx.fillRect(-8, -4, 16, 6);
+
+  ctx.restore();
+}
+
+function updateCampaignMap(dt) {
+  mapTime += dt;
+  if (gameState.campaign.mapShake > 0) {
+    gameState.campaign.mapShake *= 0.85;
+    if (gameState.campaign.mapShake < 0.2) gameState.campaign.mapShake = 0;
+  }
+}
+
+function renderCampaignMap() {
+  if (!mapCtx || !mapCanvas) return;
+  mapCtx.save();
+  mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+  if (gameState.campaign.mapShake > 0) {
+    const sx = (Math.random() - 0.5) * gameState.campaign.mapShake;
+    const sy = (Math.random() - 0.5) * gameState.campaign.mapShake;
+    mapCtx.translate(sx, sy);
+  }
+
+  // Parchment Scroll Dark Atmosphere
+  const grad = mapCtx.createRadialGradient(640, 360, 50, 640, 360, 700);
+  grad.addColorStop(0, '#241a30');
+  grad.addColorStop(0.8, '#140e1c');
+  grad.addColorStop(1, '#08050c');
+  mapCtx.fillStyle = grad;
+  mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+  // Border frame
+  mapCtx.strokeStyle = 'rgba(245, 197, 66, 0.12)';
+  mapCtx.lineWidth = 2;
+  mapCtx.strokeRect(40, 40, mapCanvas.width - 80, mapCanvas.height - 80);
+
+  // Chapter Labels along path
+  mapCtx.font = 'bold 13px sans-serif';
+  mapCtx.fillStyle = 'rgba(205, 186, 150, 0.4)';
+  mapCtx.fillText('CHAPTER I: OUTER SHRINE', 170, 150);
+  mapCtx.fillText('CHAPTER II: BAMBOO CROSSROADS', 530, 130);
+  mapCtx.fillText('CHAPTER III: CRIMSON TORII', 830, 160);
+  mapCtx.fillText('CHAPTER IV: THE NETHER RIFT', 1100, 220);
+
+  // Draw Connective Path Routes
+  for (const node of gameState.campaign.nodes) {
+    for (const connId of node.connectedNodeIds) {
+      const target = gameState.campaign.nodes.find(n => n.id === connId);
+      if (!target) continue;
+
+      mapCtx.save();
+      const isTargetUnlocked = target.status === 'UNLOCKED' || target.status === 'COMPLETED' || target.status === 'CURRENT';
+      const isNodeCompleted = node.status === 'COMPLETED';
+
+      if (isNodeCompleted && isTargetUnlocked) {
+        mapCtx.strokeStyle = '#ffd700';
+        mapCtx.lineWidth = 3.5;
+        mapCtx.shadowColor = 'rgba(255, 215, 0, 0.6)';
+        mapCtx.shadowBlur = 8;
+        mapCtx.setLineDash([]);
+      } else if (isTargetUnlocked) {
+        mapCtx.strokeStyle = '#e63946';
+        mapCtx.lineWidth = 3;
+        mapCtx.shadowColor = 'rgba(230, 57, 70, 0.5)';
+        mapCtx.shadowBlur = 6;
+        mapCtx.setLineDash([]);
+      } else {
+        mapCtx.strokeStyle = 'rgba(75, 60, 95, 0.55)';
+        mapCtx.lineWidth = 2;
+        mapCtx.shadowBlur = 0;
+        mapCtx.setLineDash([7, 7]);
+      }
+
+      mapCtx.beginPath();
+      mapCtx.moveTo(node.x, node.y);
+      mapCtx.lineTo(target.x, target.y);
+      mapCtx.stroke();
+      mapCtx.restore();
+    }
+  }
+
+  // Draw Distinct Stage Nodes
+  for (const node of gameState.campaign.nodes) {
+    mapCtx.save();
+    mapCtx.translate(node.x, node.y);
+
+    const isHovered = gameState.campaign.hoverNode === node;
+    const isPlayerCurrent = gameState.campaign.currentNodeId === node.id;
+    const isAvailable = node.status === 'UNLOCKED' || node.status === 'CURRENT' || node.status === 'COMPLETED';
+
+    // Pulsing outer halo on active/available nodes
+    if (isAvailable) {
+      const pulse = Math.sin(mapTime * 6) * 4;
+      mapCtx.strokeStyle = isHovered ? '#ffd700' : 'rgba(245, 197, 66, 0.5)';
+      mapCtx.lineWidth = isHovered ? 4 : 2;
+      mapCtx.beginPath();
+      mapCtx.arc(0, 0, node.radius + pulse + 2, 0, Math.PI * 2);
+      mapCtx.stroke();
+    }
+
+    // DISTINCT NODE VISUAL STATES:
+    if (node.status === 'LOCKED') {
+      // Iron-padlocked stone medallion
+      mapCtx.fillStyle = '#1c1724';
+      mapCtx.strokeStyle = '#3d344d';
+      mapCtx.lineWidth = 3.5;
+      mapCtx.beginPath();
+      mapCtx.arc(0, 0, node.radius, 0, Math.PI * 2);
+      mapCtx.fill();
+      mapCtx.stroke();
+
+      // Procedural Iron Padlock
+      mapCtx.strokeStyle = '#8d859b';
+      mapCtx.lineWidth = 3;
+      mapCtx.beginPath();
+      mapCtx.arc(0, -6, 7, Math.PI, 0, false);
+      mapCtx.stroke();
+
+      mapCtx.fillStyle = '#514761';
+      mapCtx.strokeStyle = '#2b2436';
+      mapCtx.lineWidth = 1.5;
+      mapCtx.beginPath();
+      drawSafeRoundRect(mapCtx, -9, -4, 18, 14, 3);
+      mapCtx.fill();
+      mapCtx.stroke();
+
+      mapCtx.fillStyle = '#120d1c';
+      mapCtx.beginPath();
+      mapCtx.arc(0, 1, 2.5, 0, Math.PI * 2);
+      mapCtx.fill();
+      mapCtx.fillRect(-1, 1, 2, 4);
+
+    } else if (node.status === 'COMPLETED') {
+      // Crimson Victory Seal Medallion with Kanji '勝'
+      mapCtx.fillStyle = '#8b0000';
+      mapCtx.strokeStyle = '#ffd700';
+      mapCtx.lineWidth = 3.5;
+      mapCtx.beginPath();
+      mapCtx.arc(0, 0, node.radius, 0, Math.PI * 2);
+      mapCtx.fill();
+      mapCtx.stroke();
+
+      // Bold Golden Victory Kanji '勝'
+      mapCtx.fillStyle = '#ffd700';
+      mapCtx.font = 'bold 20px "Segoe UI", sans-serif';
+      mapCtx.textAlign = 'center';
+      mapCtx.textBaseline = 'middle';
+      mapCtx.fillText('勝', 0, -1);
+
+      // Gold checkmark badge
+      mapCtx.fillStyle = '#ffd700';
+      mapCtx.beginPath();
+      mapCtx.arc(node.radius - 8, -node.radius + 8, 8, 0, Math.PI * 2);
+      mapCtx.fill();
+      mapCtx.fillStyle = '#000';
+      mapCtx.font = 'bold 10px sans-serif';
+      mapCtx.fillText('✓', node.radius - 8, -node.radius + 9);
+
+    } else {
+      // UNLOCKED or CURRENT: Glowing Wooden Torii Medallion
+      mapCtx.fillStyle = '#2d1b28';
+      mapCtx.strokeStyle = isPlayerCurrent ? '#ffd700' : '#f5c542';
+      mapCtx.lineWidth = 3.5;
+      mapCtx.beginPath();
+      mapCtx.arc(0, 0, node.radius, 0, Math.PI * 2);
+      mapCtx.fill();
+      mapCtx.stroke();
+
+      let icon = '⛩️';
+      if (node.type === 'SHRINE') icon = '✨';
+      else if (node.type === 'MERCHANT') icon = '🍵';
+      else if (node.type === 'BOSS') icon = node.bossType === 'kyubi' ? '🦊' : '👹';
+
+      mapCtx.font = '22px sans-serif';
+      mapCtx.textAlign = 'center';
+      mapCtx.textBaseline = 'middle';
+      mapCtx.fillText(icon, 0, 0);
+    }
+
+    // 3 Stars Rating Display below Battle/Boss Nodes
+    if (node.type === 'BATTLE' || node.type === 'BOSS') {
+      drawNodeStars(mapCtx, 0, node.radius + 12, node.stars || 0);
+    }
+
+    // Stage Name Label
+    mapCtx.font = 'bold 12px sans-serif';
+    mapCtx.fillStyle = isAvailable ? '#fff' : '#6b5e78';
+    mapCtx.textAlign = 'center';
+    mapCtx.fillText(node.title, 0, node.radius + 26);
+
+    // Player Active Location Marker (Bobbing Chibi Kabuto Helmet)
+    if (isPlayerCurrent) {
+      const bob = Math.sin(mapTime * 5) * 5;
+      drawKabutoHelmet(mapCtx, 0, -node.radius - 22 + bob);
+    }
+
+    mapCtx.restore();
+  }
+
+  // Floating Sakura Petals
+  mapCtx.fillStyle = 'rgba(255, 183, 197, 0.45)';
+  for (let p of sakuraPetals) {
+    mapCtx.beginPath();
+    mapCtx.arc(p.x % mapCanvas.width, (p.y + mapTime * 20) % mapCanvas.height, p.size * 0.7, 0, Math.PI * 2);
+    mapCtx.fill();
+  }
+
+  // Hover Tooltip
+  if (gameState.campaign.hoverNode) {
+    renderNodeTooltip(mapCtx, gameState.campaign.hoverNode);
+  }
+
+  mapCtx.restore();
+}
+
+function drawNodeStars(ctx, x, y, stars) {
+  ctx.save();
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const starOffsets = [-12, 0, 12];
+  for (let i = 0; i < 3; i++) {
+    const earned = i < stars;
+    ctx.fillStyle = earned ? '#ffd700' : 'rgba(255, 255, 255, 0.2)';
+    ctx.fillText('★', x + starOffsets[i], y);
+  }
+  ctx.restore();
+}
+
+function renderNodeTooltip(ctx, node) {
+  ctx.save();
+  const tx = Math.max(120, Math.min(mapCanvas.width - 150, node.x));
+  const ty = node.y - 65;
+
+  ctx.fillStyle = 'rgba(20, 15, 28, 0.96)';
+  ctx.strokeStyle = '#f5c542';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  drawSafeRoundRect(ctx, tx - 110, ty - 32, 220, 58, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(node.title, tx, ty - 16);
+
+  ctx.font = '11px sans-serif';
+  if (node.status === 'COMPLETED') {
+    ctx.fillStyle = '#4cc9f0';
+    ctx.fillText(`Cleared (${node.stars || 0}/3 Stars) - Click to Replay!`, tx, ty + 2);
+  } else if (node.status === 'UNLOCKED' || node.status === 'CURRENT') {
+    ctx.fillStyle = '#2ec4b6';
+    ctx.fillText('Unlocked - Click to Deploy!', tx, ty + 2);
+  } else {
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fillText('Locked - Clear prior gates', tx, ty + 2);
+  }
+
+  if (node.reward && (node.reward.gold > 0 || node.reward.gems > 0)) {
+    ctx.fillStyle = '#e8dcc4';
+    ctx.font = '10px sans-serif';
+    ctx.fillText(`Rewards: ${node.reward.gold} 🪙  ${node.reward.gems} 💎`, tx, ty + 16);
+  }
+
+  ctx.restore();
+}
+
+// Normalized Coordinate Calculation
+function getNormalizedCoords(canvas, clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left) * (canvas.width / rect.width),
+    y: (clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+function setupMapInteractions() {
+  mapCanvas.addEventListener('mousemove', (e) => {
+    const coords = getNormalizedCoords(mapCanvas, e.clientX, e.clientY);
+    gameState.campaign.hoverNode = null;
+    for (const node of gameState.campaign.nodes) {
+      if (Math.hypot(node.x - coords.x, node.y - coords.y) <= (node.radius || 34)) {
+        gameState.campaign.hoverNode = node;
+        break;
+      }
+    }
+    const h = gameState.campaign.hoverNode;
+    mapCanvas.style.cursor = (h && (h.status === 'UNLOCKED' || h.status === 'COMPLETED' || h.status === 'CURRENT')) ? 'pointer' : (h ? 'not-allowed' : 'default');
+  });
+
+  mapCanvas.addEventListener('mouseleave', () => {
+    gameState.campaign.hoverNode = null;
+    mapCanvas.style.cursor = 'default';
+  });
+
+  mapCanvas.addEventListener('click', (e) => {
+    const coords = getNormalizedCoords(mapCanvas, e.clientX, e.clientY);
+    for (const node of gameState.campaign.nodes) {
+      if (Math.hypot(node.x - coords.x, node.y - coords.y) <= (node.radius || 34)) {
+        handleNodeClick(node);
+        return;
+      }
+    }
+  });
+}
+
+function handleNodeClick(node) {
+  if (node.status === 'LOCKED') {
+    audio.playParry();
+    gameState.campaign.mapShake = 10;
+    floatingTexts.push(new FloatingText(node.x, node.y, 'Route Locked! Clear prior gates.', '#ff4d4d', 14));
+    console.warn(`[Campaign] Cannot access locked stage: ${node.title} (${node.id})`);
+    return;
+  }
+
+  audio.playCoin();
+
+  if (node.type === 'SHRINE') {
+    openBlessingModal(node);
+  } else if (node.type === 'MERCHANT') {
+    openMerchantModal(node);
+  } else {
+    stateManager.transition(GAME_STATE.STATE_NODE_PREVIEW, node);
+  }
+}
+
+function openBattlePreviewModal(node) {
+  state.battle.currentNode = node;
+  document.getElementById('node-modal-chapter').innerText = node.chapter;
+  document.getElementById('node-modal-title').innerText = node.title;
+  document.getElementById('node-modal-desc').innerText = node.desc;
+  document.getElementById('node-reward-gold').innerText = node.reward ? node.reward.gold : 120;
+  document.getElementById('node-reward-gem').innerText = node.reward ? node.reward.gems : 3;
+
+  const currentStars = node.stars || 0;
+  const starsBanner = document.getElementById('node-modal-stars');
+  starsBanner.innerHTML = '';
+  for (let i = 1; i <= 3; i++) {
+    const span = document.createElement('span');
+    span.className = `star-icon ${i <= currentStars ? '' : 'empty'}`;
+    span.innerText = '⭐';
+    starsBanner.appendChild(span);
+  }
+
+  document.getElementById('star-crit-1').className = `star-criterion ${currentStars >= 1 ? 'earned' : 'unearned'}`;
+  document.getElementById('star-crit-2').className = `star-criterion ${currentStars >= 2 ? 'earned' : 'unearned'}`;
+  document.getElementById('star-crit-3').className = `star-criterion ${currentStars >= 3 ? 'earned' : 'unearned'}`;
+
+  const embarkBtn = document.getElementById('btn-embark-battle');
+  embarkBtn.innerText = node.status === 'COMPLETED' ? 'REPLAY LEVEL FOR 3 STARS ➔' : 'DEPLOY TO BATTLE ➔';
+
+  document.getElementById('node-details-modal').style.display = 'flex';
+}
+
+function openBlessingModal(node) {
+  state.battle.currentNode = node;
+  const container = document.getElementById('blessings-container');
+  container.innerHTML = '';
+
+  availableBlessings.forEach(b => {
+    const card = document.createElement('div');
+    card.className = 'blessing-card';
+    card.innerHTML = `
+      <div class="blessing-icon">${b.icon}</div>
+      <div class="blessing-name">${b.name}</div>
+      <div class="blessing-effect">${b.effect}</div>
+    `;
+    card.addEventListener('click', () => {
+      b.apply();
+      audio.playHeal();
+      resolveStageProgression(node, 3);
+      document.getElementById('blessing-modal').style.display = 'none';
+      stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP);
+    });
+    container.appendChild(card);
+  });
+
+  document.getElementById('blessing-modal').style.display = 'flex';
+}
+
+function openMerchantModal(node) {
+  state.battle.currentNode = node;
+  const container = document.getElementById('merchant-items-container');
+  container.innerHTML = '';
+
+  const merchantItems = [
+    { id: 'sake', name: 'Sacred Sake Gourd', icon: '🍶', cost: 35, desc: 'Heals 60% HP & grants knockback immunity' },
+    { id: 'bento', name: 'Onigiri Bento', icon: '🍙', cost: 40, desc: '+50 Leadership Spirit Points surge' },
+    { id: 'bomb', name: 'Fire Bomb', icon: '💣', cost: 55, desc: 'Creates a blazing wall of fire on the ground' },
+    { id: 'talisman', name: 'Time Talisman', icon: '📜', cost: 80, desc: 'Freezes all undead in ice for 4.5 seconds' }
+  ];
+
+  merchantItems.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'dojo-card';
+    card.innerHTML = `
+      <div>
+        <div class="dojo-card-header">
+          <div class="dojo-card-icon">${item.icon}</div>
+          <div>
+            <div class="dojo-card-name">${item.name}</div>
+            <div class="dojo-card-lvl">Owned: ${state.belt[item.id]}</div>
+          </div>
+        </div>
+        <div class="dojo-card-desc">${item.desc}</div>
+      </div>
+      <button class="buy-btn" ${state.gold < item.cost ? 'disabled' : ''}>Buy (${item.cost} 🪙)</button>
+    `;
+    card.querySelector('button').addEventListener('click', () => {
+      if (state.gold >= item.cost) {
+        state.gold -= item.cost;
+        state.belt[item.id]++;
+        audio.playCoin();
+        updateHUDCounters();
+        saveCampaignToStorage();
+        openMerchantModal(node);
+      }
+    });
+    container.appendChild(card);
+  });
+
+  resolveStageProgression(node, 3);
+  document.getElementById('merchant-modal').style.display = 'flex';
+}
+
+// Atomic Progression Function
+function resolveStageProgression(node, earnedStars) {
+  node.status = 'COMPLETED';
+  node.stars = Math.max(node.stars || 0, earnedStars);
+
+  let nextCandidate = null;
+  for (const childId of node.connectedNodeIds) {
+    const child = gameState.campaign.nodes.find(n => n.id === childId);
+    if (child) {
+      if (child.status === 'LOCKED') {
+        child.status = 'UNLOCKED';
+      }
+      if (!nextCandidate && child.status !== 'COMPLETED') {
+        nextCandidate = child;
+      }
+    }
+  }
+
+  if (nextCandidate) {
+    gameState.campaign.currentNodeId = nextCandidate.id;
+  } else {
+    gameState.campaign.currentNodeId = node.id;
+  }
+
+  saveCampaignToStorage();
+  console.log(`[Progression] Stage "${node.title}" resolved with ${earnedStars} stars! Current node: ${gameState.campaign.currentNodeId}`);
+}
+
+// =============================================================================
+// BATTLE INITIALIZATION & WAVE SPAWNER
+// =============================================================================
+function startBattle(node) {
+  allies = [];
+  enemies = [];
+  arrows = [];
+  lootDrops = [];
+  particles = [];
+  floatingTexts = [];
+  groundHazards = [];
+
+  samurai.reset();
+  samurai.applyUpgrades();
+
+  const b = state.battle;
+  b.currentNode = node;
+  b.active = true;
+  b._ending = false;
+  b.waveTimer = 0;
+  b.bossActive = false;
+  b.activeBoss = null;
+  b.gateArcherTimer = 0;
+
+  b.spirit = 40 + state.blessings.startSpirit;
+  b.maxSpirit = 100 + (state.upgrades.horn.lvl - 1) * 15;
+  b.spiritRegen = 2.0 + (state.upgrades.horn.lvl - 1) * 0.7;
+
+  b.gateMaxHp = 2000 + (state.upgrades.gate.lvl - 1) * 600;
+  b.gateHp = b.gateMaxHp;
+  b.gateArchers = state.upgrades.gate.lvl - 1;
+
+  // Build spawn queue from node's wavesConfig
+  const queue = [];
+  if (node.wavesConfig && node.wavesConfig.length > 0) {
+    for (const w of node.wavesConfig) {
+      queue.push({ delay: w.delay, type: w.type, mult: w.mult || 1.0 });
+    }
+  } else {
+    const mult = 1.0 + (node.isBoss ? 0.8 : 0.3);
+    for (let i = 0; i < 8; i++) queue.push({ delay: i * 2.0, type: 'peasant', mult });
+    for (let i = 0; i < 5; i++) queue.push({ delay: 10 + i * 2.5, type: 'ninja', mult });
+  }
+
+  b.spawnQueue = queue;
+  b.totalEnemiesInWave = queue.length;
+
+  document.getElementById('stage-wave-info').innerText = node.title || node.name;
+  audio.playWarHorn();
+  audio.startTaikoRhythm();
+}
+
+function updateWaveManager(dt) {
+  const b = state.battle;
+  if (!b.active) return;
+
+  b.waveTimer += dt;
+
+  for (let i = b.spawnQueue.length - 1; i >= 0; i--) {
+    const item = b.spawnQueue[i];
+    if (b.waveTimer >= item.delay) {
+      enemies.push(new Enemy(item.type, item.mult));
+      b.spawnQueue.splice(i, 1);
+    }
+  }
+
+  const aliveCount = enemies.filter(e => e.hp > 0).length + b.spawnQueue.length;
+  const progressPct = 100 - (aliveCount / Math.max(1, b.totalEnemiesInWave)) * 100;
+  document.getElementById('horde-progress-fill').style.width = `${Math.min(100, Math.max(0, progressPct))}%`;
+
+  if (b.spawnQueue.length === 0 && aliveCount === 0) {
+    b.active = false;
+    const nodeRef = b.currentNode;
+    setTimeout(() => {
+      if (state.battle._ending) return;
+      if (nodeRef !== state.battle.currentNode) return;
+      endBattle(true, 'The horde has been purged from this sacred precinct!');
+    }, 1500);
+  }
+}
+
+function endBattle(victory, message) {
+  if (!state.battle.currentNode || state.battle._ending) return;
+  state.battle._ending = true;
+  state.battle.active = false;
+  stateManager.transition(GAME_STATE.STATE_VICTORY_DEFEAT, { victory, message });
+
+  const modal = document.getElementById('end-game-modal');
+  const title = document.getElementById('end-modal-title');
+  const desc = document.getElementById('end-modal-desc');
+  const rewardsBox = document.getElementById('end-modal-rewards');
+  const node = state.battle.currentNode;
+
+  if (victory) {
+    audio.playGong();
+    title.innerText = 'VICTORY ACHIEVED';
+    title.style.color = 'var(--gold)';
+    desc.innerText = message;
+    rewardsBox.style.display = 'flex';
+
+    const gatePct = Math.round((state.battle.gateHp / Math.max(1, state.battle.gateMaxHp)) * 100);
+    let earnedStars = 1;
+    if (gatePct >= 80) earnedStars = 3;
+    else if (gatePct >= 50) earnedStars = 2;
+
+    const goldReward = node.reward ? node.reward.gold : (node.gold || 120);
+    const gemReward = node.reward ? node.reward.gems : (node.gems || 3);
+
+    state.gold += goldReward;
+    state.gems += gemReward;
+
+    resolveStageProgression(node, earnedStars);
+
+    for (let i = 1; i <= 3; i++) {
+      const starEl = document.getElementById(`end-star-${i}`);
+      if (i <= earnedStars) starEl.classList.remove('empty');
+      else starEl.classList.add('empty');
+    }
+
+    document.getElementById('victory-gate-integrity').innerText = `Sacred Gate Integrity: ${gatePct}% (${earnedStars} / 3 Stars Earned!)`;
+    document.getElementById('end-gold-earned').innerText = `+${goldReward} 🪙`;
+    document.getElementById('end-gem-earned').innerText = `+${gemReward} 💎`;
+  } else {
+    audio.playExplosion();
+    title.innerText = 'DEFEAT';
+    title.style.color = '#e63946';
+    desc.innerText = message;
+    rewardsBox.style.display = 'none';
+
+    document.getElementById('victory-gate-integrity').innerText = `Sacred Gate was breached. Re-arm and try again!`;
+    for (let i = 1; i <= 3; i++) {
+      document.getElementById(`end-star-${i}`).classList.add('empty');
+    }
+  }
+
+  modal.style.display = 'flex';
+}
+
+// CONSUMABLE BELT POUCH TRIGGERS
+// =============================================================================
+function useBeltItem(type) {
+  if (!state.battle.active) return;
+  if (state.belt[type] <= 0) {
+    audio.playParry();
+    floatingTexts.push(new FloatingText(samurai.x, samurai.y - 40, 'Out of Stock!', '#ff6b6b', 14));
+    return;
+  }
+
+  state.belt[type]--;
+  updateHUDCounters();
+
+  if (type === 'sake') {
+    audio.playHeal();
+    const healAmt = Math.round(samurai.maxHp * 0.6);
+    samurai.hp = Math.min(samurai.maxHp, samurai.hp + healAmt);
+    state.buffs.knockbackImmunity = 3.0;
+    floatingTexts.push(new FloatingText(samurai.x, samurai.y - 60, `+${healAmt} HP (UNSTOPPABLE)`, '#2ec4b6', 17, true));
+  } else if (type === 'bento') {
+    audio.playCoin();
+    state.battle.spirit = Math.min(state.battle.maxSpirit, state.battle.spirit + 50);
+    floatingTexts.push(new FloatingText(samurai.x, samurai.y - 60, '+50 SPIRIT SURGE', '#4cc9f0', 17, true));
+  } else if (type === 'bomb') {
+    audio.playExplosion();
+    const dropX = samurai.x + (samurai.facing * 140);
+    groundHazards.push(new GroundHazard(dropX, GROUND_Y, 'fire', 6.0, 18));
+    floatingTexts.push(new FloatingText(dropX, GROUND_Y - 40, 'WALL OF FIRE!', '#ff5400', 16, true));
+  } else if (type === 'talisman') {
+    audio.playIceFreeze();
+    state.buffs.timeFreeze = 4.5;
+    floatingTexts.push(new FloatingText(samurai.x, samurai.y - 70, 'TIME FROZEN (4.5s)', '#a0e7e5', 20, true));
+  }
+}
+
+// =============================================================================
+// HERO SKILLS & ALLY SUMMONS
+// =============================================================================
+function summonUnit(type) {
+  if (!state.battle.active) return;
+  const costs = { peasant: 15, spearman: 35, bowman: 50, guard: 80, maiden: 95 };
+  const cdTimes = { peasant: 3.0, spearman: 6.0, bowman: 8.0, guard: 14.0, maiden: 16.0 };
+
+  if (state.summonCooldowns[type] > 0) return;
+  if (state.battle.spirit < costs[type]) {
+    audio.playParry();
+    floatingTexts.push(new FloatingText(samurai.x, samurai.y - 40, 'Not enough Spirit!', '#ff6b6b', 14));
+    return;
+  }
+
+  state.battle.spirit -= costs[type];
+  state.summonCooldowns[type] = cdTimes[type];
+  allies.push(new Ally(type, VILLAGE_GATE_X + 50));
+  audio.playWarHorn();
+}
+
+function activateHeroSkill(skill) {
+  if (!state.battle.active) return;
+  if (state.skillCooldowns[skill] > 0) return;
+
+  if (skill === 'dash') {
+    state.skillCooldowns.dash = 12.0;
+    samurai.triggerKatanaDash();
+  } else if (skill === 'hail') {
+    state.skillCooldowns.hail = 18.0;
+    samurai.triggerArrowHail();
+  } else if (skill === 'cry') {
+    state.skillCooldowns.cry = 25.0;
+    state.buffs.warCry = 8.0;
+    audio.playWarHorn();
+    floatingTexts.push(new FloatingText(samurai.x, samurai.y - 60, 'WAR CRY! (+50% SPD / +40% DMG)', '#ffd700', 17, true));
+  }
+}
+
+function updateGateArchers(dt) {
+  if (state.battle.gateArchers <= 0) return;
+  state.battle.gateArcherTimer += dt;
+  if (state.battle.gateArcherTimer >= 1.6) {
+    state.battle.gateArcherTimer = 0;
+    let target = null;
+    let minDist = 420;
+    for (let e of enemies) {
+      if (e.hp <= 0) continue;
+      const d = e.x - VILLAGE_GATE_X;
+      if (d > 0 && d < minDist) {
+        minDist = d;
+        target = e;
+      }
+    }
+    if (target) {
+      audio.playBowTwang();
+      const safeDist = Math.max(40, target.x - VILLAGE_GATE_X);
+      arrows.push(new Projectile(VILLAGE_GATE_X + 15, GROUND_Y - 220, safeDist / 28, -4.5, 30 + state.battle.gateArchers * 10, true, 'arrow', false));
+    }
+  }
+}
+
+// =============================================================================
+// HUD UPDATES & REFRESH
+// =============================================================================
+function updateHUD(dt) {
+  const hpPct = (samurai.hp / Math.max(1, samurai.maxHp)) * 100;
+  const lagPct = (samurai.hpLag / Math.max(1, samurai.maxHp)) * 100;
+  document.getElementById('hero-hp-fill').style.width = `${Math.max(0, hpPct)}%`;
+  document.getElementById('hero-hp-lag').style.width = `${Math.max(0, lagPct)}%`;
+  document.getElementById('hero-hp-text').innerText = `${Math.round(samurai.hp)} / ${samurai.maxHp}`;
+  document.getElementById('hero-stance-badge').innerText = samurai.combatMode === 'RANGED' ? 'YUMI BOW STANCE' : 'KATANA STANCE';
+
+  updateHUDCounters();
+
+  if (state.battle.bossActive && state.battle.activeBoss) {
+    const bossPct = (state.battle.activeBoss.hp / Math.max(1, state.battle.activeBoss.maxHp)) * 100;
+    document.getElementById('boss-bar-fill').style.width = `${Math.max(0, bossPct)}%`;
+  }
+
+  state.battle.spirit = Math.min(state.battle.maxSpirit, state.battle.spirit + state.battle.spiritRegen * dt);
+  const spiritPct = (state.battle.spirit / Math.max(1, state.battle.maxSpirit)) * 100;
+  document.getElementById('drum-spirit-fill').style.height = `${spiritPct}%`;
+  document.getElementById('spirit-val').innerText = Math.floor(state.battle.spirit);
+  document.getElementById('spirit-rate').innerText = `+${state.battle.spiritRegen.toFixed(1)}/s`;
+
+  if (state.buffs.knockbackImmunity > 0) state.buffs.knockbackImmunity -= dt;
+  if (state.buffs.timeFreeze > 0) state.buffs.timeFreeze -= dt;
+  if (state.buffs.warCry > 0) state.buffs.warCry -= dt;
+
+  const strip = document.getElementById('active-buffs-strip');
+  strip.innerHTML = '';
+  if (state.buffs.knockbackImmunity > 0) strip.innerHTML += `<div class="buff-badge">🍶 Unstoppable (${state.buffs.knockbackImmunity.toFixed(1)}s)</div>`;
+  if (state.buffs.timeFreeze > 0) strip.innerHTML += `<div class="buff-badge">📜 Time Frozen (${state.buffs.timeFreeze.toFixed(1)}s)</div>`;
+  if (state.buffs.warCry > 0) strip.innerHTML += `<div class="buff-badge">📯 War Cry (${state.buffs.warCry.toFixed(1)}s)</div>`;
+
+  ['peasant', 'spearman', 'bowman', 'guard', 'maiden'].forEach(unit => {
+    const cd = state.summonCooldowns[unit];
+    const el = document.getElementById(`cd-${unit}`);
+    const card = document.getElementById(`card-${unit}`);
+    const cost = { peasant: 15, spearman: 35, bowman: 50, guard: 80, maiden: 95 }[unit];
+
+    if (cd > 0) {
+      state.summonCooldowns[unit] -= dt;
+      el.classList.add('active');
+      el.innerText = Math.ceil(state.summonCooldowns[unit]);
+      card.classList.add('disabled');
+    } else {
+      el.classList.remove('active');
+      if (state.battle.spirit < cost) card.classList.add('disabled');
+      else card.classList.remove('disabled');
+    }
+  });
+
+  ['dash', 'hail', 'cry'].forEach(skill => {
+    const cd = state.skillCooldowns[skill];
+    const el = document.getElementById(`cd-${skill}`);
+    const card = document.getElementById(`skill-${skill}`);
+
+    if (cd > 0) {
+      state.skillCooldowns[skill] -= dt;
+      el.classList.add('active');
+      el.innerText = Math.ceil(state.skillCooldowns[skill]);
+      card.classList.add('disabled');
+    } else {
+      el.classList.remove('active');
+      card.classList.remove('disabled');
+    }
+  });
+}
+
+function updateHUDCounters() {
+  document.getElementById('hud-gold').innerText = state.gold;
+  document.getElementById('hud-gem').innerText = state.gems;
+  document.getElementById('camp-gold').innerText = state.gold;
+  document.getElementById('camp-gem').innerText = state.gems;
+
+  document.getElementById('qty-sake').innerText = state.belt.sake;
+  document.getElementById('qty-bento').innerText = state.belt.bento;
+  document.getElementById('qty-bomb').innerText = state.belt.bomb;
+  document.getElementById('qty-talisman').innerText = state.belt.talisman;
+
+  ['sake', 'bento', 'bomb', 'talisman'].forEach(item => {
+    const slot = document.getElementById(`belt-slot-${item}`);
+    if (state.belt[item] <= 0) slot.classList.add('empty');
+    else slot.classList.remove('empty');
+  });
+}
+
+// =============================================================================
+// DOJO & BLACKSMITH UPGRADE MODAL
+// =============================================================================
+let currentDojoTab = 'hero';
+
+function renderDojoUpgrades() {
+  const container = document.getElementById('dojo-items-grid');
+  container.innerHTML = '';
+
+  if (currentDojoTab === 'belt') {
+    const shopPouch = [
+      { id: 'sake', name: 'Sacred Sake Gourd', icon: '🍶', cost: 35, desc: 'Heals 60% HP & grants knockback immunity' },
+      { id: 'bento', name: 'Onigiri Bento', icon: '🍙', cost: 40, desc: '+50 Leadership Spirit Points surge' },
+      { id: 'bomb', name: 'Fire Bomb', icon: '💣', cost: 55, desc: 'Creates a blazing wall of fire on the ground' },
+      { id: 'talisman', name: 'Time Talisman', icon: '📜', cost: 80, desc: 'Freezes all undead in ice for 4.5 seconds' }
+    ];
+
+    shopPouch.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'dojo-card';
+      card.innerHTML = `
+        <div>
+          <div class="dojo-card-header">
+            <div class="dojo-card-icon">${item.icon}</div>
+            <div>
+              <div class="dojo-card-name">${item.name}</div>
+              <div class="dojo-card-lvl">Owned: ${state.belt[item.id]}</div>
+            </div>
+          </div>
+          <div class="dojo-card-desc">${item.desc}</div>
+        </div>
+        <button class="buy-btn" ${state.gold < item.cost ? 'disabled' : ''}>Buy (${item.cost} 🪙)</button>
+      `;
+      card.querySelector('button').addEventListener('click', () => {
+        if (state.gold >= item.cost) {
+          state.gold -= item.cost;
+          state.belt[item.id]++;
+          audio.playCoin();
+          updateHUDCounters();
+          renderDojoUpgrades();
+        }
+      });
+      container.appendChild(card);
+    });
+    return;
+  }
+
+  const categoryMap = {
+    hero: ['katana', 'bow', 'armor', 'flashStep'],
+    village: ['horn', 'gate'],
+    units: ['peasant', 'spearman', 'bowman', 'guard', 'maiden']
+  };
+
+  const keys = categoryMap[currentDojoTab] || [];
+  keys.forEach(key => {
+    const item = state.upgrades[key];
+    const canAfford = item.costType === 'gold' ? state.gold >= item.cost : state.gems >= item.cost;
+    const isMax = item.lvl >= item.max;
+
+    const iconMap = {
+      katana: '🗡️', bow: '🏹', armor: '🛡️', flashStep: '⚡',
+      horn: '📯', gate: '⛩️',
+      peasant: '🌾', spearman: '🎋', bowman: '🎯', guard: '⚔️', maiden: '✨'
+    };
+
+    const card = document.createElement('div');
+    card.className = 'dojo-card';
+    card.innerHTML = `
+      <div>
+        <div class="dojo-card-header">
+          <div class="dojo-card-icon">${iconMap[key] || '✨'}</div>
+          <div>
+            <div class="dojo-card-name">${item.name}</div>
+            <div class="dojo-card-lvl">Rank ${item.lvl} / ${item.max}</div>
+          </div>
+        </div>
+        <div class="dojo-card-desc">${item.desc}</div>
+      </div>
+      <button class="buy-btn" ${(!canAfford || isMax) ? 'disabled' : ''}>
+        ${isMax ? 'MAX RANK' : `Upgrade (${item.cost} ${item.costType === 'gold' ? '🪙' : '💎'})`}
+      </button>
+    `;
+
+    card.querySelector('button').addEventListener('click', () => {
+      if (item.lvl >= item.max) return;
+      if (item.costType === 'gold' && state.gold >= item.cost) {
+        state.gold -= item.cost;
+        item.lvl++;
+        item.cost = Math.round(item.cost * 1.5);
+        audio.playCoin();
+      } else if (item.costType === 'gem' && state.gems >= item.cost) {
+        state.gems -= item.cost;
+        item.lvl++;
+        item.cost = Math.round(item.cost * 1.6);
+        audio.playCoin();
+      }
+      samurai.applyUpgrades();
+      updateHUDCounters();
+      renderDojoUpgrades();
+    });
+
+    container.appendChild(card);
+  });
+}
+
+// =============================================================================
+// INPUT LISTENERS & DISPATCH
+// =============================================================================
+function setupInputListeners() {
+  window.addEventListener('keydown', (e) => {
+    audio.init();
+    state.keys[e.code] = true;
+
+    if (e.code === 'KeyA' || e.code === 'KeyD') {
+      const now = performance.now();
+      if (state.view === GAME_VIEW.BATTLE && state.battle.active && state.lastTapKey === e.code && now - state.lastTapTime < 280) {
+        samurai.triggerFlashStep();
+      }
+      state.lastTapKey = e.code;
+      state.lastTapTime = now;
+    }
+    if (e.code === 'Space' && state.view === GAME_VIEW.BATTLE && state.battle.active) {
+      samurai.triggerFlashStep();
+    }
+
+    if (e.code === 'KeyM') {
+      const active = audio.toggleMute();
+      document.getElementById('btn-toggle-sound').innerText = active ? '🔊' : '🔇';
+    }
+
+    if (e.code === 'KeyP') {
+      state.paused = !state.paused;
+      document.getElementById('btn-pause-game').innerText = state.paused ? '▶️' : '⏸️';
+    }
+
+    const inBattle = state.view === GAME_VIEW.BATTLE && state.battle.active;
+
+    if (inBattle && e.code === 'Digit1') summonUnit('peasant');
+    if (inBattle && e.code === 'Digit2') summonUnit('spearman');
+    if (inBattle && e.code === 'Digit3') summonUnit('bowman');
+    if (inBattle && e.code === 'Digit4') summonUnit('guard');
+    if (inBattle && e.code === 'Digit5') summonUnit('maiden');
+
+    if (inBattle && e.code === 'KeyQ') activateHeroSkill('dash');
+    if (inBattle && e.code === 'KeyW') activateHeroSkill('hail');
+    if (inBattle && e.code === 'KeyE') activateHeroSkill('cry');
+
+    if (inBattle && (e.code === 'KeyZ' || e.code === 'Digit6')) useBeltItem('sake');
+    if (inBattle && (e.code === 'KeyX' || e.code === 'Digit7')) useBeltItem('bento');
+    if (inBattle && (e.code === 'KeyC' || e.code === 'Digit8')) useBeltItem('bomb');
+    if (inBattle && (e.code === 'KeyV' || e.code === 'Digit9')) useBeltItem('talisman');
+  });
+
+  window.addEventListener('keyup', (e) => {
+    state.keys[e.code] = false;
+  });
+
+  const leftPad = document.getElementById('btn-touch-left');
+  const rightPad = document.getElementById('btn-touch-right');
+
+  const startL = (e) => { e.preventDefault(); state.touchMoveLeft = true; };
+  const endL = (e) => { e.preventDefault(); state.touchMoveLeft = false; };
+  const startR = (e) => { e.preventDefault(); state.touchMoveRight = true; };
+  const endR = (e) => { e.preventDefault(); state.touchMoveRight = false; };
+
+  leftPad.addEventListener('mousedown', startL); leftPad.addEventListener('mouseup', endL); leftPad.addEventListener('mouseleave', endL);
+  leftPad.addEventListener('touchstart', startL); leftPad.addEventListener('touchend', endL);
+
+  rightPad.addEventListener('mousedown', startR); rightPad.addEventListener('mouseup', endR); rightPad.addEventListener('mouseleave', endR);
+  rightPad.addEventListener('touchstart', startR); rightPad.addEventListener('touchend', endR);
+
+  ['peasant', 'spearman', 'bowman', 'guard', 'maiden'].forEach(u => {
+    document.getElementById(`card-${u}`).addEventListener('click', () => summonUnit(u));
+  });
+
+  document.getElementById('skill-dash').addEventListener('click', () => activateHeroSkill('dash'));
+  document.getElementById('skill-hail').addEventListener('click', () => activateHeroSkill('hail'));
+  document.getElementById('skill-cry').addEventListener('click', () => activateHeroSkill('cry'));
+
+  document.getElementById('belt-slot-sake').addEventListener('click', () => useBeltItem('sake'));
+  document.getElementById('belt-slot-bento').addEventListener('click', () => useBeltItem('bento'));
+  document.getElementById('belt-slot-bomb').addEventListener('click', () => useBeltItem('bomb'));
+  document.getElementById('belt-slot-talisman').addEventListener('click', () => useBeltItem('talisman'));
+
+  document.getElementById('btn-toggle-sound').addEventListener('click', () => {
+    audio.init();
+    const active = audio.toggleMute();
+    document.getElementById('btn-toggle-sound').innerText = active ? '🔊' : '🔇';
+  });
+
+  document.getElementById('btn-pause-game').addEventListener('click', () => {
+    state.paused = !state.paused;
+    document.getElementById('btn-pause-game').innerText = state.paused ? '▶️' : '⏸️';
+  });
+
+  document.getElementById('btn-exit-to-map').addEventListener('click', () => {
+    state.battle.active = false;
+    state.view = GAME_VIEW.CAMPAIGN;
+    document.getElementById('battle-hud').style.display = 'none';
+    document.getElementById('campaign-screen').classList.add('active');
+  });
+
+  document.getElementById('btn-begin-campaign').addEventListener('click', () => {
+    audio.init();
+    audio.startTaikoRhythm();
+    state.view = GAME_VIEW.CAMPAIGN;
+    document.getElementById('start-screen').classList.remove('active');
+    document.getElementById('campaign-screen').classList.add('active');
+  });
+
+  document.getElementById('btn-quick-play').addEventListener('click', () => {
+    audio.init();
+    document.getElementById('start-screen').classList.remove('active');
+    startBattle(campaignNodes[0]);
+  });
+
+  document.getElementById('btn-back-to-start').addEventListener('click', () => {
+    state.view = GAME_VIEW.START;
+    document.getElementById('campaign-screen').classList.remove('active');
+    document.getElementById('start-screen').classList.add('active');
+  });
+
+  document.getElementById('btn-embark-battle').addEventListener('click', () => {
+    document.getElementById('node-details-modal').style.display = 'none';
+    document.getElementById('campaign-screen').classList.remove('active');
+    startBattle(state.battle.currentNode);
+  });
+
+  document.getElementById('btn-cancel-node').addEventListener('click', () => {
+    document.getElementById('node-details-modal').style.display = 'none';
+  });
+
+  document.getElementById('btn-skip-blessing').addEventListener('click', () => {
+    document.getElementById('blessing-modal').style.display = 'none';
+  });
+
+  document.getElementById('btn-close-merchant').addEventListener('click', () => {
+    document.getElementById('merchant-modal').style.display = 'none';
+  });
+
+  document.getElementById('btn-open-dojo').addEventListener('click', () => {
+    document.getElementById('upgrade-modal').style.display = 'flex';
+    renderDojoUpgrades();
+  });
+
+  document.getElementById('btn-close-dojo').addEventListener('click', () => {
+    document.getElementById('upgrade-modal').style.display = 'none';
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentDojoTab = btn.getAttribute('data-tab');
+      renderDojoUpgrades();
+    });
+  });
+
+  document.getElementById('btn-end-continue').addEventListener('click', () => {
+    document.getElementById('end-game-modal').style.display = 'none';
+    document.getElementById('battle-hud').style.display = 'none';
+    state.view = GAME_VIEW.CAMPAIGN;
+    document.getElementById('campaign-screen').classList.add('active');
+  });
+}
+
+// =============================================================================
+// =============================================================================
+// DECOUPLED ANIMATION LOOPS & RENDER ENGINES
+// =============================================================================
+const gameCanvas = document.getElementById('gameCanvas');
+const gameCtx = gameCanvas.getContext('2d');
+
+let lastCampaignTime = performance.now();
+function startCampaignLoop() {
+  cancelCurrentLoop();
+  lastCampaignTime = performance.now();
+
+  function step(now) {
+    if (stateManager.currentState !== GAME_STATE.STATE_CAMPAIGN_MAP &&
+        stateManager.currentState !== GAME_STATE.STATE_NODE_PREVIEW) {
+      return;
+    }
+    const dt = Math.min(0.1, (now - lastCampaignTime) / 1000);
+    lastCampaignTime = now;
+
+    updateCampaignMap(dt);
+    renderCampaignMap();
+
+    activeLoopId = requestAnimationFrame(step);
+  }
+
+  activeLoopId = requestAnimationFrame(step);
+}
+
+function stopCampaignLoop() {
+  cancelCurrentLoop();
+}
+
+let lastBattleTime = performance.now();
+function startBattleLoop() {
+  cancelCurrentLoop();
+  lastBattleTime = performance.now();
+
+  function step(now) {
+    if (stateManager.currentState !== GAME_STATE.STATE_BATTLE_ACTIVE &&
+        stateManager.currentState !== GAME_STATE.STATE_VICTORY_DEFEAT) {
+      return;
+    }
+    const dt = Math.min(0.1, (now - lastBattleTime) / 1000);
+    lastBattleTime = now;
+
+    if (!state.paused && stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) {
+      updateBattle(dt);
+    }
+
+    gameCtx.save();
+    if (state.screenShake > 0) {
+      const sx = (Math.random() - 0.5) * state.screenShake;
+      const sy = (Math.random() - 0.5) * state.screenShake;
+      gameCtx.translate(sx, sy);
+    }
+    renderBattleWorld(gameCtx);
+    gameCtx.restore();
+
+    activeLoopId = requestAnimationFrame(step);
+  }
+
+  activeLoopId = requestAnimationFrame(step);
+}
+
+function stopBattleLoop() {
+  cancelCurrentLoop();
+}
+
+function updateBattle(dt) {
+  if (state.screenShake > 0) {
+    state.screenShake *= 0.88;
+    if (state.screenShake < 0.2) state.screenShake = 0;
+  }
+
+  const targetCamX = samurai.x - 1280 / 2;
+  state.cameraX += (targetCamX - state.cameraX) * 0.12;
+  state.cameraX = Math.max(0, Math.min(WORLD_WIDTH - 1280, state.cameraX));
+
+  updateWaveManager(dt);
+  samurai.update(dt);
+
+  for (let i = allies.length - 1; i >= 0; i--) {
+    allies[i].update(dt);
+    if (allies[i].hp <= 0) allies.splice(i, 1);
+  }
+
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    enemies[i].update(dt);
+    if (enemies[i].hp <= 0) enemies.splice(i, 1);
+  }
+
+  for (let i = groundHazards.length - 1; i >= 0; i--) {
+    const remove = groundHazards[i].update(dt);
+    if (remove) groundHazards.splice(i, 1);
+  }
+
+  for (let i = arrows.length - 1; i >= 0; i--) {
+    const targets = arrows[i].isPlayer ? enemies : [...allies, samurai];
+    const remove = arrows[i].update(dt, targets);
+    if (remove) arrows.splice(i, 1);
+  }
+
+  for (let i = lootDrops.length - 1; i >= 0; i--) {
+    const remove = lootDrops[i].update(dt, samurai);
+    if (remove) lootDrops.splice(i, 1);
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update(dt);
+    if (particles[i].life <= 0) particles.splice(i, 1);
+  }
+
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    floatingTexts[i].update(dt);
+    if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+  }
+
+  updateGateArchers(dt);
+
+  for (let p of sakuraPetals) {
+    p.x += p.speedX * 60 * dt;
+    p.y += p.speedY * 60 * dt;
+    p.rot += 0.02;
+    if (p.x > WORLD_WIDTH) p.x = 0;
+    if (p.y > WORLD_HEIGHT) p.y = 0;
+  }
+
+  updateHUD(dt);
+}
+
+// =============================================================================
+// EVENT LISTENERS & ROUTING
+// =============================================================================
+function setupInputListeners() {
+  window.addEventListener('keydown', (e) => {
+    audio.init();
+
+    // Central State-Gated Input Routing: only accept battle inputs during active battle
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) {
+      state.keys[e.code] = true;
+
+      if (e.code === 'KeyA' || e.code === 'KeyD') {
+        const now = performance.now();
+        if (state.lastTapKey === e.code && now - state.lastTapTime < 280) {
+          samurai.triggerFlashStep();
+        }
+        state.lastTapKey = e.code;
+        state.lastTapTime = now;
+      }
+      if (e.code === 'Space') {
+        samurai.triggerFlashStep();
+      }
+
+      if (e.code === 'Digit1') summonUnit('peasant');
+      if (e.code === 'Digit2') summonUnit('spearman');
+      if (e.code === 'Digit3') summonUnit('bowman');
+      if (e.code === 'Digit4') summonUnit('guard');
+      if (e.code === 'Digit5') summonUnit('maiden');
+
+      if (e.code === 'KeyQ') activateHeroSkill('dash');
+      if (e.code === 'KeyW') activateHeroSkill('hail');
+      if (e.code === 'KeyE') activateHeroSkill('cry');
+
+      if (e.code === 'KeyZ' || e.code === 'Digit6') useBeltItem('sake');
+      if (e.code === 'KeyX' || e.code === 'Digit7') useBeltItem('bento');
+      if (e.code === 'KeyC' || e.code === 'Digit8') useBeltItem('bomb');
+      if (e.code === 'KeyV' || e.code === 'Digit9') useBeltItem('talisman');
+    }
+
+    if (e.code === 'KeyM') {
+      const active = audio.toggleMute();
+      document.getElementById('btn-toggle-sound').innerText = active ? '🔊' : '🔇';
+    }
+
+    if (e.code === 'KeyP' && stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) {
+      state.paused = !state.paused;
+      document.getElementById('btn-pause-game').innerText = state.paused ? '▶️' : '⏸️';
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    state.keys[e.code] = false;
+  });
+
+  const leftPad = document.getElementById('btn-touch-left');
+  const rightPad = document.getElementById('btn-touch-right');
+
+  const startL = (e) => { e.preventDefault(); if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) state.touchMoveLeft = true; };
+  const endL = (e) => { e.preventDefault(); state.touchMoveLeft = false; };
+  const startR = (e) => { e.preventDefault(); if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) state.touchMoveRight = true; };
+  const endR = (e) => { e.preventDefault(); state.touchMoveRight = false; };
+
+  leftPad.addEventListener('mousedown', startL); leftPad.addEventListener('mouseup', endL); leftPad.addEventListener('mouseleave', endL);
+  leftPad.addEventListener('touchstart', startL); leftPad.addEventListener('touchend', endL);
+
+  rightPad.addEventListener('mousedown', startR); rightPad.addEventListener('mouseup', endR); rightPad.addEventListener('mouseleave', endR);
+  rightPad.addEventListener('touchstart', startR); rightPad.addEventListener('touchend', endR);
+
+  ['peasant', 'spearman', 'bowman', 'guard', 'maiden'].forEach(u => {
+    document.getElementById(`card-${u}`).addEventListener('click', () => {
+      if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) summonUnit(u);
+    });
+  });
+
+  document.getElementById('skill-dash').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) activateHeroSkill('dash');
+  });
+  document.getElementById('skill-hail').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) activateHeroSkill('hail');
+  });
+  document.getElementById('skill-cry').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) activateHeroSkill('cry');
+  });
+
+  document.getElementById('belt-slot-sake').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) useBeltItem('sake');
+  });
+  document.getElementById('belt-slot-bento').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) useBeltItem('bento');
+  });
+  document.getElementById('belt-slot-bomb').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) useBeltItem('bomb');
+  });
+  document.getElementById('belt-slot-talisman').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) useBeltItem('talisman');
+  });
+
+  document.getElementById('btn-toggle-sound').addEventListener('click', () => {
+    audio.init();
+    const active = audio.toggleMute();
+    document.getElementById('btn-toggle-sound').innerText = active ? '🔊' : '🔇';
+  });
+
+  document.getElementById('btn-pause-game').addEventListener('click', () => {
+    if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) {
+      state.paused = !state.paused;
+      document.getElementById('btn-pause-game').innerText = state.paused ? '▶️' : '⏸️';
+    }
+  });
+
+  document.getElementById('btn-exit-to-map').addEventListener('click', () => {
+    state.battle.active = false;
+    stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP);
+  });
+
+  document.getElementById('btn-begin-campaign').addEventListener('click', () => {
+    audio.init();
+    audio.startTaikoRhythm();
+    stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP);
+  });
+
+  document.getElementById('btn-quick-play').addEventListener('click', () => {
+    audio.init();
+    stateManager.transition(GAME_STATE.STATE_BATTLE_ACTIVE, gameState.campaign.nodes[0]);
+  });
+
+  document.getElementById('btn-back-to-start').addEventListener('click', () => {
+    stateManager.transition(GAME_STATE.STATE_START);
+  });
+
+  document.getElementById('btn-embark-battle').addEventListener('click', () => {
+    document.getElementById('node-details-modal').style.display = 'none';
+    stateManager.transition(GAME_STATE.STATE_BATTLE_ACTIVE, state.battle.currentNode);
+  });
+
+  document.getElementById('btn-cancel-node').addEventListener('click', () => {
+    document.getElementById('node-details-modal').style.display = 'none';
+    stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP);
+  });
+
+  document.getElementById('btn-skip-blessing').addEventListener('click', () => {
+    document.getElementById('blessing-modal').style.display = 'none';
+    stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP);
+  });
+
+  document.getElementById('btn-close-merchant').addEventListener('click', () => {
+    document.getElementById('merchant-modal').style.display = 'none';
+    stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP);
+  });
+
+  document.getElementById('btn-open-dojo').addEventListener('click', () => {
+    document.getElementById('upgrade-modal').style.display = 'flex';
+    renderDojoUpgrades();
+  });
+
+  document.getElementById('btn-close-dojo').addEventListener('click', () => {
+    document.getElementById('upgrade-modal').style.display = 'none';
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentDojoTab = btn.getAttribute('data-tab');
+      renderDojoUpgrades();
+    });
+  });
+
+  document.getElementById('btn-end-continue').addEventListener('click', () => {
+    document.getElementById('end-game-modal').style.display = 'none';
+    document.getElementById('battle-hud').style.display = 'none';
+    stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP);
+  });
+}
+
+// =============================================================================
+// CONSOLE DEBUG HARNESS
+// =============================================================================
+window.campaignDebug = {
+  unlockAllNodes: () => {
+    gameState.campaign.nodes.forEach(n => {
+      if (n.status === 'LOCKED') n.status = 'UNLOCKED';
+    });
+    saveCampaignToStorage();
+    console.log('[CampaignDebug] All stages UNLOCKED! Run stateManager.transition(GAME_STATE.STATE_CAMPAIGN_MAP) to refresh.');
+  },
+  resetCampaign: () => {
+    localStorage.removeItem(STORAGE_KEY);
+    gameState.campaign.nodes = JSON.parse(JSON.stringify(DEFAULT_CAMPAIGN_NODES));
+    gameState.campaign.currentNodeId = 'c1_gate';
+    state.gold = 140;
+    state.gems = 8;
+    saveCampaignToStorage();
+    updateHUDCounters();
+    console.log('[CampaignDebug] Campaign fully reset to default stage 1.');
+  },
+  completeCurrentStage: (stars = 3) => {
+    const curr = gameState.campaign.nodes.find(n => n.id === gameState.campaign.currentNodeId);
+    if (curr) {
+      resolveStageProgression(curr, stars);
+      console.log(`[CampaignDebug] Force-completed: ${curr.title} with ${stars} stars.`);
+    }
+  },
+  addCurrency: (gold = 500, gems = 20) => {
+    state.gold += gold;
+    state.gems += gems;
+    saveCampaignToStorage();
+    updateHUDCounters();
+    console.log(`[CampaignDebug] Added +${gold} gold and +${gems} gems.`);
+  },
+  getState: () => ({
+    fsmState: stateManager.currentState,
+    campaign: gameState.campaign,
+    heroState: state
+  }),
+  transitionTo: (stateName, payload = null) => {
+    if (GAME_STATE[stateName]) {
+      stateManager.transition(GAME_STATE[stateName], payload);
+    } else {
+      console.error(`Invalid state name: ${stateName}. Valid states:`, Object.keys(GAME_STATE));
+    }
+  }
+};
+
+console.log('[CampaignDebug] Debug harness ready! Use window.campaignDebug.{unlockAllNodes, resetCampaign, completeCurrentStage, addCurrency, getState, transitionTo}');
+
+// Initialization on DOM Load
+function initGame() {
+  mapCanvas = document.getElementById('campaignMapCanvas');
+  mapCtx = mapCanvas.getContext('2d');
+
+  loadCampaignFromStorage();
+  setupInputListeners();
+  setupMapInteractions();
+  samurai.applyUpgrades();
+  updateHUDCounters();
+
+  console.log('[System] Game engine initialized successfully. Initial state:', stateManager.currentState);
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initGame);
+} else {
+  initGame();
+}
+</script>
+</body>
+</html>
