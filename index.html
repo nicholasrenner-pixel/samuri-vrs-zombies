@@ -2305,6 +2305,10 @@ class Projectile {
         const isCrit = this.isPlayer && Math.random() < (samurai.critChance + state.blessings.critChance);
         let finalDmg = isCrit ? this.damage * 2 : this.damage;
 
+        hitStopManager.trigger(isCrit ? 4 : 2);
+        const arrowAngle = Math.atan2(this.vy, this.vx);
+        cameraRig.shake(arrowAngle, isCrit ? 5.0 : 2.8);
+
         target.takeDamage(finalDmg, isCrit, this.vx > 0 ? 1 : -1);
         audio.playArrowHit();
 
@@ -2370,6 +2374,119 @@ class Projectile {
 // THE SAMURAI HERO CLASS
 // =============================================================================
 // =============================================================================
+// =============================================================================
+// DIRECTIONAL SCREEN SHAKE CAMERA RIG & HIT-STOP (MICRO-FREEZE) SYSTEM
+// =============================================================================
+class CameraRig {
+  constructor() {
+    this.x = 0;
+    this.y = 0;
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this.velX = 0;
+    this.velY = 0;
+    this.spring = 0.22;
+    this.damping = 0.78;
+    this.decay = 0.88;
+    this.rumbleDuration = 0;
+    this.rumbleMagnitude = 0;
+  }
+
+  shake(directionAngle, intensity, durationFrames = 0) {
+    this.velX += Math.cos(directionAngle) * intensity;
+    this.velY += Math.sin(directionAngle) * intensity;
+    if (durationFrames > 0) {
+      this.rumbleDuration = durationFrames;
+      this.rumbleMagnitude = intensity * 0.35;
+    }
+  }
+
+  addImpulse(angle, magnitude) {
+    this.shake(angle, magnitude);
+  }
+
+  update() {
+    // Secondary lingering rumble (e.g. for boss ground-quake slams)
+    if (this.rumbleDuration > 0) {
+      this.rumbleDuration--;
+      const randomAngle = Math.random() * Math.PI * 2;
+      this.velX += Math.cos(randomAngle) * this.rumbleMagnitude;
+      this.velY += Math.sin(randomAngle) * this.rumbleMagnitude;
+      this.rumbleMagnitude *= 0.92;
+    }
+
+    // Damped harmonic oscillation returning (offsetX, offsetY) to (0,0)
+    const forceX = -this.offsetX * this.spring;
+    const forceY = -this.offsetY * this.spring;
+
+    this.velX = (this.velX + forceX) * this.damping;
+    this.velY = (this.velY + forceY) * this.damping;
+
+    this.offsetX += this.velX;
+    this.offsetY += this.velY;
+
+    // Clamp to zero when threshold reached to prevent perpetual micro-wobble
+    if (Math.abs(this.offsetX) < 0.05 && Math.abs(this.velX) < 0.05) {
+      this.offsetX = 0;
+      this.velX = 0;
+    }
+    if (Math.abs(this.offsetY) < 0.05 && Math.abs(this.velY) < 0.05) {
+      this.offsetY = 0;
+      this.velY = 0;
+    }
+  }
+
+  apply(ctx) {
+    ctx.translate(Math.round(this.offsetX), Math.round(this.offsetY));
+  }
+}
+
+const cameraRig = new CameraRig();
+
+class HitStopSystem {
+  constructor() {
+    this.freezeFramesRemaining = 0;
+    this.inputBuffer = [];
+  }
+
+  trigger(frames) {
+    if (frames > this.freezeFramesRemaining) {
+      this.freezeFramesRemaining = frames;
+    }
+  }
+
+  freeze(frames) {
+    this.trigger(frames);
+  }
+
+  isFrozen() {
+    return this.freezeFramesRemaining > 0;
+  }
+
+  update() {
+    if (this.freezeFramesRemaining > 0) {
+      this.freezeFramesRemaining--;
+      return true; // Game simulation pauses (hit-stop freeze)
+    }
+    return false; // Game runs normally
+  }
+
+  bufferInput(actionFn) {
+    if (this.inputBuffer.length < 5) {
+      this.inputBuffer.push(actionFn);
+    }
+  }
+
+  flushBuffer() {
+    while (this.inputBuffer.length > 0) {
+      const action = this.inputBuffer.shift();
+      try { action(); } catch (e) {}
+    }
+  }
+}
+
+const hitStopManager = new HitStopSystem();
+
 // PROCEDURAL CURVED VECTOR & SKELETAL JOINT ANIMATION HELPERS
 // =============================================================================
 function easeInOutQuad(t) {
@@ -2747,7 +2864,26 @@ class SamuraiHero {
     let dmg = this.meleeDmg * move.damageMultiplier;
     if (isCrit) dmg *= 2.0;
 
-    state.screenShake = move.screenShakeIntensity || 2;
+    // COMBAT HOOKS: Directional Screen Shake & Hit-Stop (Micro-Freeze)
+    const attackAngle = this.facing === 1 ? 0 : Math.PI;
+
+    if (move.id === 'crescent_slash') {
+      // Light Katana Slash: 2 frames hit-stop, 3px horizontal shake
+      hitStopManager.trigger(2);
+      cameraRig.shake(attackAngle, 3.2);
+    } else if (move.id === 'lunging_thrust') {
+      // Lunging Thrust: 4 frames hit-stop, 6px forward impulse
+      hitStopManager.trigger(4);
+      cameraRig.shake(attackAngle, 6.5);
+    } else if (move.id === 'execution_cleave' || isCrit) {
+      // Overhead Execution Cleave / Crit: 8 frames hit-stop, 12px downward-forward punch
+      hitStopManager.trigger(8);
+      const cleaveAngle = this.facing === 1 ? (0.4 * Math.PI) : (Math.PI - 0.4 * Math.PI);
+      cameraRig.shake(cleaveAngle, 12.0);
+    } else {
+      hitStopManager.trigger(2);
+      cameraRig.shake(attackAngle, 3.0);
+    }
 
     // Visual Blade Arc Trail Trigger
     this.activeTrail = {
@@ -2760,6 +2896,10 @@ class SamuraiHero {
 
     for (let e of enemies) {
       if (e.hp > 0 && e.x > this.x && e.x - this.x <= move.hitRange) {
+        if (move.id === 'execution_cleave' || isCrit) {
+          e.hitFlashTimer = 0.22;
+          e.extraBrightFlash = true;
+        }
         e.takeDamage(dmg, isCrit, 1);
         if (move.stunDuration && e.flinch) {
           e.flinch(move.stunDuration);
@@ -3674,22 +3814,37 @@ class Enemy {
     if (this.type === 'oni_warlord') {
       audio.playExplosion();
       if (move.aoe) {
+        // COMBAT HOOK: Oni Boss Kanabo Ground Slam
+        // Hit-stop: 12 frames, Intensity 20px, downward punch (pi/2) + lingering secondary rumble
+        hitStopManager.trigger(12);
+        cameraRig.shake(Math.PI / 2, 20.0, 18);
+
         for (let i = 0; i < 16; i++) particles.push(new Particle(this.x - 50, GROUND_Y, 'bone'));
         for (let a of allies) if (Math.abs(a.x - this.x) <= 180) a.takeDamage(dmg * 0.7);
         if (Math.abs(samurai.x - this.x) <= 180) samurai.takeDamage(dmg * 0.7);
         if (target === 'GATE') damageVillageGate(dmg * 1.5);
       } else if (move.roar) {
-        // Battlefield Roar: Buffs nearby undead with surge of strength
+        hitStopManager.trigger(4);
+        cameraRig.shake(Math.random() * Math.PI * 2, 5.0, 8);
         floatingTexts.push(new FloatingText(this.x, this.y - 80, 'DEMON WAR CRY!', '#ffd700', 18, true));
         enemies.forEach(e => {
           if (Math.abs(e.x - this.x) < 300) e.speed *= 1.25;
         });
       } else {
+        // Wide Kanabo Club Sweep
+        hitStopManager.trigger(6);
+        const sweepAngle = this.facing === 1 ? 0 : Math.PI;
+        cameraRig.shake(sweepAngle, 8.5);
         if (target === 'GATE') damageVillageGate(dmg);
         else if (target && target.takeDamage) target.takeDamage(dmg);
       }
       return;
     }
+
+    // Regular enemy melee strike
+    hitStopManager.trigger(2);
+    const enemyStrikeAngle = this.facing === 1 ? 0 : Math.PI;
+    cameraRig.shake(enemyStrikeAngle, 3.2);
 
     audio.playSlash(false);
     if (target === 'GATE') damageVillageGate(dmg);
@@ -3986,7 +4141,8 @@ function drawUnitHealthBar(ctx, x, y, hp, hpLag, maxHp, color) {
 function damageVillageGate(damage) {
   if (!state.battle.active) return;
   state.battle.gateHp = Math.max(0, state.battle.gateHp - damage);
-  state.screenShake = 5;
+  hitStopManager.trigger(4);
+  cameraRig.shake(Math.PI, 6.5);
   audio.playArrowHit();
 
   if (state.battle.gateHp <= 0) {
@@ -5430,11 +5586,7 @@ function startBattleLoop() {
     }
 
     gameCtx.save();
-    if (state.screenShake > 0) {
-      const sx = (Math.random() - 0.5) * state.screenShake;
-      const sy = (Math.random() - 0.5) * state.screenShake;
-      gameCtx.translate(sx, sy);
-    }
+    cameraRig.apply(gameCtx);
     renderBattleWorld(gameCtx);
     gameCtx.restore();
 
@@ -5449,10 +5601,38 @@ function stopBattleLoop() {
 }
 
 function updateBattle(dt) {
-  if (state.screenShake > 0) {
-    state.screenShake *= 0.88;
-    if (state.screenShake < 0.2) state.screenShake = 0;
+  // 1. Always update directional camera rig spring physics
+  cameraRig.update();
+
+  // 2. Always update visual particle effects, floating texts, and sakura petals
+  // Visual frame continues rendering so freeze feels like impact weight, not lag!
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update(dt);
+    if (particles[i].life <= 0) particles.splice(i, 1);
   }
+
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    floatingTexts[i].update(dt);
+    if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+  }
+
+  for (let p of sakuraPetals) {
+    p.x += p.speedX * 60 * dt;
+    p.y += p.speedY * 60 * dt;
+    p.rot += 0.02;
+    if (p.x > WORLD_WIDTH) p.x = 0;
+    if (p.y > WORLD_HEIGHT) p.y = 0;
+  }
+
+  updateHUD(dt);
+
+  // 3. HIT-STOP CHECK: If frozen, decrement frame counter and skip entity simulation!
+  if (hitStopManager.update()) {
+    return; // Decoupled execution: particles & visuals draw, but simulation freezes!
+  }
+
+  // 4. Flush any buffered player inputs upon unfreezing
+  hitStopManager.flushBuffer();
 
   const targetCamX = samurai.x - 1280 / 2;
   state.cameraX += (targetCamX - state.cameraX) * 0.12;
@@ -5487,27 +5667,7 @@ function updateBattle(dt) {
     if (remove) lootDrops.splice(i, 1);
   }
 
-  for (let i = particles.length - 1; i >= 0; i--) {
-    particles[i].update(dt);
-    if (particles[i].life <= 0) particles.splice(i, 1);
-  }
-
-  for (let i = floatingTexts.length - 1; i >= 0; i--) {
-    floatingTexts[i].update(dt);
-    if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
-  }
-
   updateGateArchers(dt);
-
-  for (let p of sakuraPetals) {
-    p.x += p.speedX * 60 * dt;
-    p.y += p.speedY * 60 * dt;
-    p.rot += 0.02;
-    if (p.x > WORLD_WIDTH) p.x = 0;
-    if (p.y > WORLD_HEIGHT) p.y = 0;
-  }
-
-  updateHUD(dt);
 }
 
 // =============================================================================
@@ -5521,32 +5681,40 @@ function setupInputListeners() {
     if (stateManager.currentState === GAME_STATE.STATE_BATTLE_ACTIVE) {
       state.keys[e.code] = true;
 
+      const handleAction = (fn) => {
+        if (hitStopManager.isFrozen()) {
+          hitStopManager.bufferInput(fn);
+        } else {
+          fn();
+        }
+      };
+
       if (e.code === 'KeyA' || e.code === 'KeyD') {
         const now = performance.now();
         if (state.lastTapKey === e.code && now - state.lastTapTime < 280) {
-          samurai.triggerFlashStep();
+          handleAction(() => samurai.triggerFlashStep());
         }
         state.lastTapKey = e.code;
         state.lastTapTime = now;
       }
       if (e.code === 'Space') {
-        samurai.triggerFlashStep();
+        handleAction(() => samurai.triggerFlashStep());
       }
 
-      if (e.code === 'Digit1') summonUnit('peasant');
-      if (e.code === 'Digit2') summonUnit('spearman');
-      if (e.code === 'Digit3') summonUnit('bowman');
-      if (e.code === 'Digit4') summonUnit('guard');
-      if (e.code === 'Digit5') summonUnit('maiden');
+      if (e.code === 'Digit1') handleAction(() => summonUnit('peasant'));
+      if (e.code === 'Digit2') handleAction(() => summonUnit('spearman'));
+      if (e.code === 'Digit3') handleAction(() => summonUnit('bowman'));
+      if (e.code === 'Digit4') handleAction(() => summonUnit('guard'));
+      if (e.code === 'Digit5') handleAction(() => summonUnit('maiden'));
 
-      if (e.code === 'KeyQ') activateHeroSkill('dash');
-      if (e.code === 'KeyW') activateHeroSkill('hail');
-      if (e.code === 'KeyE') activateHeroSkill('cry');
+      if (e.code === 'KeyQ') handleAction(() => activateHeroSkill('dash'));
+      if (e.code === 'KeyW') handleAction(() => activateHeroSkill('hail'));
+      if (e.code === 'KeyE') handleAction(() => activateHeroSkill('cry'));
 
-      if (e.code === 'KeyZ' || e.code === 'Digit6') useBeltItem('sake');
-      if (e.code === 'KeyX' || e.code === 'Digit7') useBeltItem('bento');
-      if (e.code === 'KeyC' || e.code === 'Digit8') useBeltItem('bomb');
-      if (e.code === 'KeyV' || e.code === 'Digit9') useBeltItem('talisman');
+      if (e.code === 'KeyZ' || e.code === 'Digit6') handleAction(() => useBeltItem('sake'));
+      if (e.code === 'KeyX' || e.code === 'Digit7') handleAction(() => useBeltItem('bento'));
+      if (e.code === 'KeyC' || e.code === 'Digit8') handleAction(() => useBeltItem('bomb'));
+      if (e.code === 'KeyV' || e.code === 'Digit9') handleAction(() => useBeltItem('talisman'));
     }
 
     if (e.code === 'KeyM') {
