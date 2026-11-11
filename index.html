@@ -1558,6 +1558,7 @@ class StateManager {
     // Handle State Exits
     if (fromState === GAME_STATE.STATE_BATTLE_ACTIVE) {
       stopBattleLoop();
+      state.keys = {}; // Clear all held combat inputs
     } else if (fromState === GAME_STATE.STATE_CAMPAIGN_MAP && newState !== GAME_STATE.STATE_NODE_PREVIEW) {
       stopCampaignLoop();
     }
@@ -2240,7 +2241,7 @@ class LootDrop {
 
 // Projectiles with Bulletproof NaN protection
 class Projectile {
-  constructor(x, y, vx, vy, damage, isPlayer, type = 'arrow', isFiery = false) {
+  constructor(x, y, vx, vy, damage, isPlayer, type = 'arrow', isFiery = false, isPiercing = false) {
     this.x = x;
     this.y = y;
     this.vx = isNaN(vx) ? (isPlayer ? 8 : -8) : vx;
@@ -2249,6 +2250,9 @@ class Projectile {
     this.isPlayer = isPlayer;
     this.type = type;
     this.isFiery = isFiery;
+    this.isPiercing = isPiercing;
+    this.pierceHits = new Set();
+    this.maxPierceCount = 3;
     this.stuck = false;
     this.stuckTarget = null;
     this.stuckOffsetX = 0;
@@ -2294,6 +2298,7 @@ class Projectile {
 
     for (let target of targets) {
       if (!target || target.hp <= 0) continue;
+      if (this.isPiercing && this.pierceHits.has(target)) continue;
       const w = target.width || 40;
       const h = target.height || 70;
       if (
@@ -2309,12 +2314,29 @@ class Projectile {
         const arrowAngle = Math.atan2(this.vy, this.vx);
         cameraRig.shake(arrowAngle, isCrit ? 5.0 : 2.8);
 
-        target.takeDamage(finalDmg, isCrit, this.vx > 0 ? 1 : -1);
+        target.takeDamage(finalDmg, isCrit, this.vx > 0 ? 1 : -1, this.x);
         audio.playArrowHit();
+
+        for (let i = 0; i < (isCrit ? 6 : 3); i++) {
+          particles.push(new Particle(this.x, this.y, 'spark'));
+        }
 
         if (this.type === 'acid_ball') {
           groundHazards.push(new GroundHazard(this.x, GROUND_Y, 'acid', 4.5, 8));
           return true;
+        }
+
+        if (this.isPiercing) {
+          this.pierceHits.add(target);
+          if (this.pierceHits.size >= this.maxPierceCount) {
+            this.stuck = true;
+            this.stuckTarget = target;
+            this.stuckOffsetX = this.x - target.x;
+            this.stuckOffsetY = this.y - target.y;
+            return false;
+          }
+          // Continue through parabolic trajectory!
+          continue;
         }
 
         this.stuck = true;
@@ -2747,11 +2769,9 @@ class SamuraiHero {
       return;
     }
 
-    // 3-Phase Melee State Machine Progress
-    if (this.attackPhase !== 'IDLE') {
-      this.updateAttackStateMachine(dt);
-      return;
-    }
+    // 3-Phase Melee State Machine Progress & Status
+    const isMeleeAttacking = (this.attackPhase === 'WINDUP' || this.attackPhase === 'STRIKE' || this.attackPhase === 'RECOVERY');
+    this.actionState = isMeleeAttacking ? 'ATTACKING' : (this.combatMode === 'RANGED' ? 'RANGED_ATTACK' : 'IDLE');
 
     // Movement & Targeting Input
     let moveInput = 0;
@@ -2769,40 +2789,53 @@ class SamuraiHero {
       }
     }
 
-    let currentSpeed = this.speed;
-    if (moveInput < 0 && nearestEnemy) {
-      currentSpeed *= 0.8; // Tactical kiting retreat
+    // Directional Combat Movement Multipliers (Decoupled Mobile Combat & Fluid Kiting):
+    // 1. Retreating / Kiting (Holding Left / 'A' while attacking): backs away continuously at 70% of base movement speed
+    // 2. Advancing / Pressing (Holding Right / 'D' while attacking): steps forward smoothly at 80% of base movement speed
+    let moveSpeed = this.speed;
+    if (moveInput < 0) {
+      moveSpeed = this.speed * 0.70;
+    } else if (moveInput > 0) {
+      moveSpeed = isMeleeAttacking ? (this.speed * 0.80) : this.speed;
     }
 
     if (moveInput !== 0) {
-      this.vx += moveInput * currentSpeed * 0.25;
+      this.vx += (moveInput * moveSpeed - this.vx) * 0.35;
       if (nearestEnemy && nearestDist <= this.bowRange) {
-        this.facing = 1;
+        this.facing = 1; // Always face the frontline threat while kiting/retreating
       } else {
         this.facing = moveInput;
       }
     } else {
       this.vx *= 0.78;
+      if (Math.abs(this.vx) < 0.05) this.vx = 0;
     }
 
-    this.vx = Math.max(-currentSpeed, Math.min(currentSpeed, this.vx));
+    this.vx = Math.max(-moveSpeed, Math.min(moveSpeed, this.vx));
     this.x += this.vx * 60 * dt;
     this.x = Math.max(VILLAGE_GATE_X + 60, Math.min(DEMON_PORTAL_X - 100, this.x));
 
-    // Proximity Combat Trigger
-    const currentMove = this.moves[this.comboIndex];
-    if (nearestEnemy && nearestDist <= (currentMove.hitRange || 130)) {
-      this.facing = 1;
-      this.combatMode = 'MELEE';
-      this.startMeleeAttack(nearestEnemy);
-    } else if (nearestEnemy && nearestDist <= this.bowRange) {
-      this.facing = 1;
-      this.combatMode = 'RANGED';
-      if (this.bowTimer <= 0) {
-        this.performBowAttack(nearestEnemy, nearestDist);
-      }
+    // Attack State Machine Execution without hard input-locking
+    if (isMeleeAttacking) {
+      this.updateAttackStateMachine(dt);
     } else {
-      this.combatMode = Math.abs(this.vx) > 0.4 ? 'RUN' : 'IDLE';
+      // Smart Proximity Weapon Switching:
+      // Melee Range (Target within 110px): Automatic fluid Katana combos
+      // Ranged Range (Target 110px to 480px): Hero automatically draws Yumi longbow, firing parabolic piercing arrows
+      // Smooth Falloff: Moving out of melee range while retreating allows active melee recovery frame to finish cleanly before automatically pulling out the bow without stuttering
+      if (nearestEnemy && nearestDist <= 110) {
+        this.facing = 1;
+        this.combatMode = 'MELEE';
+        this.startMeleeAttack(nearestEnemy);
+      } else if (nearestEnemy && nearestDist > 110 && nearestDist <= this.bowRange) {
+        this.facing = 1;
+        this.combatMode = 'RANGED';
+        if (this.bowTimer <= 0) {
+          this.performBowAttack(nearestEnemy, nearestDist);
+        }
+      } else {
+        this.combatMode = Math.abs(this.vx) > 0.4 ? 'RUN' : 'IDLE';
+      }
     }
   }
 
@@ -2900,7 +2933,7 @@ class SamuraiHero {
           e.hitFlashTimer = 0.22;
           e.extraBrightFlash = true;
         }
-        e.takeDamage(dmg, isCrit, 1);
+        e.takeDamage(dmg, isCrit, 1, this.x);
         if (move.stunDuration && e.flinch) {
           e.flinch(move.stunDuration);
         }
@@ -2916,11 +2949,12 @@ class SamuraiHero {
     audio.playBowTwang();
 
     const safeDist = Math.max(40, dist);
-    const timeToTarget = Math.max(0.15, safeDist / 660);
+    const timeToTarget = Math.max(0.18, safeDist / 620);
     const vx = safeDist / (timeToTarget * 60);
-    const vy = -3.5 - (safeDist / 140);
+    const vy = -3.8 - (safeDist / 130);
 
-    arrows.push(new Projectile(this.x + 20, this.y - 45, vx, vy, this.rangedDmg, true, 'arrow', false));
+    // Parabolic piercing arrow with multi-target penetration
+    arrows.push(new Projectile(this.x + 20, this.y - 45, vx, vy, this.rangedDmg, true, 'arrow', false, true));
   }
 
   takeDamage(amount, isCrit = false, knockbackDir = 1) {
@@ -3128,7 +3162,9 @@ class SamuraiHero {
     ctx.ellipse(3, -4, 9, 7, 0, 0, Math.PI);
     ctx.fill();
     ctx.fillStyle = '#ffd700';
-    ctx.fillRect(4, -8, 3, 2); // Glinting eye
+    ctx.beginPath();
+    ctx.ellipse(5, -7, 1.8, 1.2, 0, 0, Math.PI * 2);
+    ctx.fill(); // Curved glinting eye
 
     // Kabuto Helmet Dome (Curved Arc)
     ctx.fillStyle = '#18181b';
@@ -3526,6 +3562,8 @@ class Enemy {
     this.isBoss = false;
     this.hitFlashTimer = 0;
     this.flinchTimer = 0;
+    this.evadeCooldownTimer = 0; // 240 frames (~4s) Internal Cooldown timer
+    this.dodgeChance = 0; // Standard undead, spitters & bosses default to 0%
 
     // 3-Phase Combat State Machine
     this.attackPhase = 'IDLE'; // 'IDLE', 'WINDUP', 'STRIKE', 'RECOVERY', 'FLINCH'
@@ -3562,7 +3600,7 @@ class Enemy {
       this.speed = 3.2;
       this.width = 32;
       this.height = 62;
-      this.dodgeChance = 0.35;
+      this.dodgeChance = 0.10; // Agile Elite: strictly capped at 10% (8%-12% spec)
       this.coinDrop = 25;
       this.gemDropChance = 0.20;
 
@@ -3594,7 +3632,8 @@ class Enemy {
       this.speed = 1.8;
       this.width = 40;
       this.height = 74;
-      this.blockChance = 0.25;
+      this.dodgeChance = 0.10; // Cursed Ronin: strictly capped at 10% (8%-12% spec)
+      this.blockChance = 0.10;
       this.coinDrop = 40;
       this.gemDropChance = 0.28;
 
@@ -3658,6 +3697,7 @@ class Enemy {
     if (state.buffs.timeFreeze > 0) return;
 
     this.animTime += dt;
+    if (this.evadeCooldownTimer > 0) this.evadeCooldownTimer -= dt;
     if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
 
     if (this.hpLag > this.hp) {
@@ -3851,12 +3891,29 @@ class Enemy {
     else if (target && target.takeDamage) target.takeDamage(dmg);
   }
 
-  takeDamage(amount, isCrit = false, knockbackDir = 1) {
-    if (this.dodgeChance && Math.random() < this.dodgeChance) {
+  takeDamage(amount, isCrit = false, knockbackDir = 1, attackerX = null) {
+    // Evasion Denial Rules:
+    // 1. Evasion denial when attacked from behind
+    const isAttackedFromBehind = attackerX !== null ?
+      (this.facing === -1 ? attackerX > this.x : attackerX < this.x) :
+      (knockbackDir < 0);
+    // 2. Evasion denial while in hit stun / flinch
+    const inHitStun = (this.attackPhase === 'FLINCH' || this.flinchTimer > 0);
+    // 3. Evasion denial during enemy's own STRIKE phase
+    const inStrikePhase = (this.attackPhase === 'STRIKE');
+
+    const canEvade = (this.dodgeChance > 0) &&
+                     (this.evadeCooldownTimer <= 0) &&
+                     !inHitStun &&
+                     !inStrikePhase &&
+                     !isAttackedFromBehind;
+
+    if (canEvade && Math.random() < this.dodgeChance) {
+      this.evadeCooldownTimer = 4.0; // 240 frames (~4s) Internal Cooldown
       audio.playParry();
       for (let i = 0; i < 6; i++) particles.push(new Particle(this.x, this.y - 30, 'darkSmoke'));
-      this.x += (Math.random() > 0.5 ? 45 : -35);
-      floatingTexts.push(new FloatingText(this.x, this.y - 45, 'EVADED!', '#4cc9f0', 13));
+      this.x += (this.facing === -1 ? 40 : -40); // Tactical sidestep away from attacker
+      floatingTexts.push(new FloatingText(this.x, this.y - 45, 'EVADED!', '#4cc9f0', 14));
       return;
     }
 
@@ -4023,7 +4080,9 @@ class Enemy {
       ctx.ellipse(2, -58 + bob, 8, 9, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#9d4edd'; // Spectral purple eye
-      ctx.fillRect(4, -60 + bob, 3, 2);
+      ctx.beginPath();
+      ctx.ellipse(5, -59 + bob, 1.8, 1.2, 0, 0, Math.PI * 2);
+      ctx.fill();
 
       drawOrganicLimb(ctx, 6, -28, 10 + limbCycle * 7, 0, 6.5, '#f8f9fa', '#2b2d42');
 
@@ -4070,8 +4129,10 @@ class Enemy {
       // Kanabo iron spikes
       ctx.fillStyle = '#ffd700';
       for (let sp = -130; sp <= -30; sp += 22) {
-        ctx.fillRect(48, sp + bob, 5, 4);
-        ctx.fillRect(28, sp + bob, 5, 4);
+        ctx.beginPath();
+        ctx.arc(48, sp + bob + 2, 2.5, 0, Math.PI * 2);
+        ctx.arc(28, sp + bob + 2, 2.5, 0, Math.PI * 2);
+        ctx.fill();
       }
 
     } else if (this.type === 'corrupted_kyubi') {
@@ -4798,6 +4859,20 @@ function setupMapInteractions() {
       }
     }
   });
+
+  mapCanvas.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length > 0) {
+      const touch = e.touches[0];
+      const coords = getNormalizedCoords(mapCanvas, touch.clientX, touch.clientY);
+      for (const node of gameState.campaign.nodes) {
+        if (Math.hypot(node.x - coords.x, node.y - coords.y) <= (node.radius || 34)) {
+          e.preventDefault();
+          handleNodeClick(node);
+          return;
+        }
+      }
+    }
+  }, { passive: false });
 }
 
 function handleNodeClick(node) {
